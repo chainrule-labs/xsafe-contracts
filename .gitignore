@@ -1,1 +1,11 @@
 .DS_STORE
+
+out/
+cache/
+broadcast/
+node_modules/
+package-lock.json
+.env
+.idea
+
+.vscode/

@@ -3,6 +3,8 @@ pragma solidity ^0.8.21;
 
 import {ECDSA} from "./utils/ECDSA.sol";
 
+import "forge-std/console.sol";
+
 contract Create2Factory {
     // keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
     bytes32 constant DOMAIN_SEPARATOR_TYPEHASH = 0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f;
@@ -47,8 +49,8 @@ contract Create2Factory {
         view
         returns (address)
     {
-        address userAddress = ECDSA.recover(_hashedMessage, _signature);
-        uint256 salt = uint256(uint160(userAddress)) + userNonces[msg.sender];
+        address signer = ECDSA.recover(_hashedMessage, _signature);
+        uint256 salt = uint256(uint160(signer)) + userNonces[signer];
         bytes32 hash = keccak256(abi.encodePacked(bytes1(0xff), address(this), salt, keccak256(_bytecode)));
         return address(uint160(uint256(hash)));
     }
