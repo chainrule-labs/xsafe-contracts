@@ -58,19 +58,25 @@ contract Create2Factory {
     // Deploys a new contract
     function deploy(bytes32 _hashedMessage, bytes memory _signature, bytes memory _bytecode)
         public
-        returns (address child)
+        returns (address)
     {
-        address userAddress = ECDSA.recover(_hashedMessage, _signature);
-        uint256 currectNonce = userNonces[msg.sender];
+        address signer = ECDSA.recover(_hashedMessage, _signature);
+        uint256 currectNonce = userNonces[signer];
 
-        uint256 salt = uint256(uint160(userAddress)) + currectNonce;
+        uint256 salt = uint256(uint160(signer)) + currectNonce;
 
-        userNonces[msg.sender]++;
+        userNonces[signer]++;
+
+        address child;
+        
         assembly {
             child := create2(callvalue(), add(_bytecode, 0x20), mload(_bytecode), salt)
-            if iszero(extcodesize(child)) { revert(0, 0) }
+            if iszero(extcodesize(child)) { 
+                revert(0, 0) 
+            }
         }
 
         emit Deploy(msg.sender, child, keccak256(_bytecode), currectNonce);
+        return child;
     }
 }

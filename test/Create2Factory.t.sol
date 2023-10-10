@@ -28,7 +28,7 @@ contract FactoryHelper {
         bytes memory _bytecode,
         uint256 _nonce,
         address factoryAddress
-    ) internal view returns (address child) {
+    ) internal pure returns (address child) {
         address signer = ECDSA.recover(_hashedMessage, _signature);
         uint256 salt = uint256(uint160(signer)) + _nonce;
         bytes32 hash = keccak256(abi.encodePacked(bytes1(0xff), factoryAddress, salt, keccak256(_bytecode)));
@@ -39,6 +39,7 @@ contract FactoryHelper {
 contract Create2FactoryTest is Test, FactoryHelper {
     Create2Factory public create2_factory;
     Child public child;
+    bytes public childBytecode;
 
     uint256 public constant testPrivateKey = 0x5f7bc1ba5fa3f035a5e34bfc399d1db5bd85b39ffac033c9c8929d2b6e7ff335;
     address public signerAddress = 0xf1Ec10A28725244E592d2907dEaAcA08d1a72be0;
@@ -46,6 +47,13 @@ contract Create2FactoryTest is Test, FactoryHelper {
     function setUp() public {
         create2_factory = new Create2Factory();
         child = new Child(address(this));
+
+        // Get Bytecode
+        // childBytecode = address(child).code;
+        bytes memory bytecode = type(Child).creationCode;
+
+        childBytecode = abi.encodePacked(bytecode, abi.encode(address(this)));
+
     }
 
     function test_getAddress() public {
@@ -61,19 +69,38 @@ contract Create2FactoryTest is Test, FactoryHelper {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(testPrivateKey, messageHash);
         bytes memory signature = abi.encodePacked(r, s, v);
 
-        // Get Bytecode
-        bytes memory bytecode = address(child).code;
-
         // Expectations
         address expectedChild =
-            getAddressHelper(messageHash, signature, bytecode, currentNonce, address(create2_factory));
+            getAddressHelper(messageHash, signature, childBytecode, currentNonce, address(create2_factory));
 
         // Act
-        address actualChild = create2_factory.getAddress(messageHash, signature, bytecode);
+        address actualChild = create2_factory.getAddress(messageHash, signature, childBytecode);
 
         // Assertions
         assertEq(actualChild, expectedChild);
     }
 
-    function test_deploy() public {}
+    function test_deploy() public {
+        // Setup
+        uint256 currentNonce = create2_factory.userNonces(signerAddress);
+
+        // Get signature information
+        bytes32 txHash = create2_factory.getTransactionHash(currentNonce);
+
+        bytes memory prefix = "\x19Ethereum Signed Message:\n32";
+        bytes32 messageHash = keccak256(abi.encodePacked(prefix, txHash));
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(testPrivateKey, messageHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+         // Expectations
+        address expectedChild = create2_factory.getAddress(messageHash, signature, childBytecode);
+
+        // Act
+        address actualChild = create2_factory.deploy(messageHash, signature, childBytecode);
+        
+        // Assertions
+        assertEq(actualChild, expectedChild);
+
+    }
 }
