@@ -44,6 +44,9 @@ contract Create2FactoryTest is Test, FactoryHelper {
     uint256 public constant testPrivateKey = 0x5f7bc1ba5fa3f035a5e34bfc399d1db5bd85b39ffac033c9c8929d2b6e7ff335;
     address public signerAddress = 0xf1Ec10A28725244E592d2907dEaAcA08d1a72be0;
 
+    // Events
+    event Deploy(address indexed sender, address indexed child, bytes32 hashedBytecode, uint256 nonce);
+
     function setUp() public {
         create2_factory = new Create2Factory();
         child = new Child(address(this));
@@ -95,12 +98,13 @@ contract Create2FactoryTest is Test, FactoryHelper {
 
          // Expectations
         address expectedChild = create2_factory.getAddress(messageHash, signature, childBytecode);
+        vm.expectEmit(true, true, true, true, address(create2_factory));
+        emit Deploy(address(this), expectedChild, keccak256(childBytecode), currentNonce);
 
         // Act
         address actualChild = create2_factory.deploy(messageHash, signature, childBytecode);
-        
+                
         // Assertions
         assertEq(actualChild, expectedChild);
-
     }
 }
