@@ -41,7 +41,7 @@ contract Create2FactoryTest is Test, FactoryHelper {
     Child public child;
     bytes public childBytecode;
 
-    uint256 public constant testPrivateKey = 0x5f7bc1ba5fa3f035a5e34bfc399d1db5bd85b39ffac033c9c8929d2b6e7ff335;
+    uint256 public constant dummyPrivateKey = 0x5f7bc1ba5fa3f035a5e34bfc399d1db5bd85b39ffac033c9c8929d2b6e7ff335;
     address public signerAddress = 0xf1Ec10A28725244E592d2907dEaAcA08d1a72be0;
 
     // Events
@@ -69,7 +69,7 @@ contract Create2FactoryTest is Test, FactoryHelper {
         bytes memory prefix = "\x19Ethereum Signed Message:\n32";
         bytes32 messageHash = keccak256(abi.encodePacked(prefix, txHash));
 
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(testPrivateKey, messageHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(dummyPrivateKey, messageHash);
         bytes memory signature = abi.encodePacked(r, s, v);
 
         // Expectations
@@ -93,7 +93,7 @@ contract Create2FactoryTest is Test, FactoryHelper {
         bytes memory prefix = "\x19Ethereum Signed Message:\n32";
         bytes32 messageHash = keccak256(abi.encodePacked(prefix, txHash));
 
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(testPrivateKey, messageHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(dummyPrivateKey, messageHash);
         bytes memory signature = abi.encodePacked(r, s, v);
 
          // Expectations
