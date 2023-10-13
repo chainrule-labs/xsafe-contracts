@@ -1,42 +1,23 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.21;
 
 import {Test} from "forge-std/Test.sol";
-import {ECDSA} from "../src/utils/ECDSA.sol";
 import {Create2Factory} from "../src/Create2Factory.sol";
+import {Child} from "./Child.t.sol";
+import {VmSafe} from "forge-std/Vm.sol";
 
 import "forge-std/console.sol";
 
-contract Child {
-    uint256 number;
-    address public admin;
+// create2 inputs: 0xff, bytecode, deployer_address, salt
 
-    constructor(address _admin) {
-        admin = _admin;
-    }
+// Right now, we are only testing with a single:
+// - private key
+// - salt
+// - contract's "userNonce"
 
-    function increment() public {
-        require(msg.sender == admin, "Unauthorized.");
-        number++;
-    }
-}
+// It would be nice to generate a bunch of random things and have it still work
 
-contract FactoryHelper {
-    function getAddressHelper(
-        bytes32 _hashedMessage,
-        bytes memory _signature,
-        bytes memory _bytecode,
-        uint256 _nonce,
-        address factoryAddress
-    ) internal pure returns (address child) {
-        address signer = ECDSA.recover(_hashedMessage, _signature);
-        uint256 salt = uint256(uint160(signer)) + _nonce;
-        bytes32 hash = keccak256(abi.encodePacked(bytes1(0xff), factoryAddress, salt, keccak256(_bytecode)));
-        child = address(uint160(uint256(hash)));
-    }
-}
-
-contract Create2FactoryTest is Test, FactoryHelper {
+contract Create2FactoryTest is Test {
     Create2Factory public create2_factory;
     Child public child;
     bytes public childBytecode;
@@ -52,11 +33,9 @@ contract Create2FactoryTest is Test, FactoryHelper {
         child = new Child(address(this));
 
         // Get Bytecode
-        // childBytecode = address(child).code;
         bytes memory bytecode = type(Child).creationCode;
 
         childBytecode = abi.encodePacked(bytecode, abi.encode(address(this)));
-
     }
 
     function test_getAddress() public {
@@ -72,9 +51,12 @@ contract Create2FactoryTest is Test, FactoryHelper {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(dummyPrivateKey, messageHash);
         bytes memory signature = abi.encodePacked(r, s, v);
 
-        // Expectations
-        address expectedChild =
-            getAddressHelper(messageHash, signature, childBytecode, currentNonce, address(create2_factory));
+        // Expectation
+        uint256 snapShot = vm.snapshot();
+        address expectedChild = create2_factory.deploy(messageHash, signature, childBytecode);
+
+        // Set chain state to what it was before the deployment
+        vm.revertTo(snapShot);
 
         // Act
         address actualChild = create2_factory.getAddress(messageHash, signature, childBytecode);
@@ -93,17 +75,19 @@ contract Create2FactoryTest is Test, FactoryHelper {
         bytes memory prefix = "\x19Ethereum Signed Message:\n32";
         bytes32 messageHash = keccak256(abi.encodePacked(prefix, txHash));
 
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(dummyPrivateKey, messageHash);
+        VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(1)))));
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(wallet.privateKey, messageHash);
         bytes memory signature = abi.encodePacked(r, s, v);
 
-         // Expectations
+        // Expectations
         address expectedChild = create2_factory.getAddress(messageHash, signature, childBytecode);
         vm.expectEmit(true, true, true, true, address(create2_factory));
         emit Deploy(address(this), expectedChild, keccak256(childBytecode), currentNonce);
 
         // Act
         address actualChild = create2_factory.deploy(messageHash, signature, childBytecode);
-                
+
         // Assertions
         assertEq(actualChild, expectedChild);
     }
