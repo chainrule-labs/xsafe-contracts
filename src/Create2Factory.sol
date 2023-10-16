@@ -3,8 +3,6 @@ pragma solidity ^0.8.21;
 
 import {ECDSA} from "./utils/ECDSA.sol";
 
-import "forge-std/console.sol";
-
 contract Create2Factory {
     // keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
     bytes32 constant DOMAIN_SEPARATOR_TYPEHASH = 0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f;
@@ -56,10 +54,7 @@ contract Create2Factory {
     }
 
     // Deploys a new contract
-    function deploy(bytes32 _hashedMessage, bytes memory _signature, bytes memory _bytecode)
-        public
-        returns (address)
-    {
+    function deploy(bytes32 _hashedMessage, bytes memory _signature, bytes memory _bytecode) public returns (address) {
         address signer = ECDSA.recover(_hashedMessage, _signature);
         uint256 currectNonce = userNonces[signer];
 
@@ -68,12 +63,10 @@ contract Create2Factory {
         userNonces[signer]++;
 
         address child;
-        
+
         assembly {
             child := create2(callvalue(), add(_bytecode, 0x20), mload(_bytecode), salt)
-            if iszero(extcodesize(child)) { 
-                revert(0, 0) 
-            }
+            if iszero(extcodesize(child)) { revert(0, 0) }
         }
 
         emit Deploy(msg.sender, child, keccak256(_bytecode), currectNonce);
