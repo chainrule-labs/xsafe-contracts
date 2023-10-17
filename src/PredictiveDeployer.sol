@@ -2,9 +2,11 @@
 pragma solidity ^0.8.21;
 
 import {ECDSA} from "./dependencies/cryptography/ECDSA.sol";
+import {SafeTransferLib, ERC20} from "solmate/utils/SafeTransferLib.sol";
 import {Initializable} from "./dependencies/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "./dependencies/proxy/utils/UUPSUpgradeable.sol";
 import {Ownable} from "./dependencies/access/Ownable.sol";
+import {IERC20} from "./dependencies/token/interfaces/IERC20.sol";
 
 contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
     // Private Constants: no SLOAD to save users gas
@@ -43,7 +45,7 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
     }
 
     /**
-     * @dev This function computes the expected message hash.
+     * @dev Computes the expected message hash.
      * @param _signer The address of the account for whom this factory contract will deploy a child contract.
      * @param _nonce The signer account's current nonce on this factory contract.
      * @return messageHash The expected signed message hash.
@@ -54,7 +56,7 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
     }
 
     /**
-     * @dev This function returns the unique deployment transaction hash to be signed.
+     * @dev Returns the unique deployment transaction hash to be signed.
      * @param _signer The address of the account for whom this factory contract will deploy a child contract.
      * @param _nonce The signer account's current nonce on this factory contract.
      * @return txHash The unique deployment transaction hash to be signed.
@@ -64,7 +66,7 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
     }
 
     /**
-     * @dev This function returns the predicted address of a contract to be deployed before it's deployed.
+     * @dev Returns the predicted address of a contract to be deployed before it's deployed.
      * @param _signer The address of the account that signed the message hash.
      * @param _bytecode The bytecode of the contract to be deployed.
      * @return child The predicted address of the contract to be deployed.
@@ -76,7 +78,7 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
     }
 
     /**
-     * @dev This function deploys arbitrary child contracts at predictable addresses, derived from account signatures.
+     * @dev Deploys arbitrary child contracts at predictable addresses, derived from account signatures.
      * @param _signer The address of the account that signed the message hash.
      * @param _signature The resulting signature from the signer account signing the messahge hash.
      * @param _bytecode The bytecode of the contract to be deployed.
@@ -119,10 +121,27 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
     ******************************************************************************/
 
     /**
-     * @dev This function allows contract admins to set the address of the trustedDeployer account.
+     * @dev Allow contract admin to set the address of the trustedDeployer account.
      * @param _deployer The address of the account that's allowed to deploy on behalf of other accounts.
      */
     function setTrustedDeployer(address _deployer) public onlyOwner {
         trustedDeployer = _deployer;
+    }
+
+    /**
+     * @dev Allow contract admin to extract native token.
+     */
+    function extractNative() public onlyOwner {
+        payable(msg.sender).transfer(address(this).balance);
+    }
+
+    /**
+     * @dev Allow contract admins to extract any ERC20 token.
+     * @param _token The address of token to remove.
+     */
+    function extractERC20(address _token) public onlyOwner {
+        uint256 balance = IERC20(_token).balanceOf(address(this));
+
+        SafeTransferLib.safeTransfer(ERC20(_token), msg.sender, balance);
     }
 }
