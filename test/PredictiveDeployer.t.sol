@@ -2,12 +2,18 @@
 pragma solidity ^0.8.21;
 
 import {Test} from "forge-std/Test.sol";
-import {Create2Factory} from "../src/Create2Factory.sol";
+import {ECDSA} from "../src/dependencies/cryptography/ECDSA.sol";
+import {PredictiveDeployer} from "../src/PredictiveDeployer.sol";
+
+import "forge-std/console.sol";
+
+import {Test} from "forge-std/Test.sol";
+import {PredictiveDeployer} from "../src/PredictiveDeployer.sol";
 import {Child} from "./Child.t.sol";
 import {VmSafe} from "forge-std/Vm.sol";
 
 contract Create2FactoryTest is Test {
-    Create2Factory public create2_factory;
+    PredictiveDeployer public predictive_deployer;
     Child public child;
     bytes public childBytecode;
 
@@ -15,7 +21,7 @@ contract Create2FactoryTest is Test {
     event Deploy(address indexed sender, address indexed child, bytes32 hashedBytecode, uint256 nonce);
 
     function setUp() public {
-        create2_factory = new Create2Factory();
+        predictive_deployer = new PredictiveDeployer();
         child = new Child(address(this));
 
         // Get Bytecode
@@ -27,10 +33,10 @@ contract Create2FactoryTest is Test {
         // Setup
         VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pk_num)))));
 
-        uint256 currentNonce = create2_factory.userNonces(wallet.addr);
+        uint256 currentNonce = predictive_deployer.userNonces(wallet.addr);
 
         // Get signature information
-        bytes32 txHash = create2_factory.getTransactionHash(currentNonce);
+        bytes32 txHash = predictive_deployer.getTransactionHash(currentNonce);
 
         bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", txHash));
 
@@ -41,13 +47,13 @@ contract Create2FactoryTest is Test {
         // Expectation
         vm.startPrank(sender);
         uint256 snapShot = vm.snapshot();
-        address expectedChild = create2_factory.deploy(messageHash, signature, childBytecode);
+        address expectedChild = predictive_deployer.deploy(messageHash, signature, childBytecode);
 
         // Set chain state to what it was before the deployment
         vm.revertTo(snapShot);
 
         // Act
-        address actualChild = create2_factory.getAddress(messageHash, signature, childBytecode);
+        address actualChild = predictive_deployer.getAddress(messageHash, signature, childBytecode);
         vm.stopPrank();
 
         // Assertions
@@ -58,10 +64,10 @@ contract Create2FactoryTest is Test {
         // Setup
         VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pk_num)))));
 
-        uint256 currentNonce = create2_factory.userNonces(wallet.addr);
+        uint256 currentNonce = predictive_deployer.userNonces(wallet.addr);
 
         // Get signature information
-        bytes32 txHash = create2_factory.getTransactionHash(currentNonce);
+        bytes32 txHash = predictive_deployer.getTransactionHash(currentNonce);
 
         bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", txHash));
 
@@ -70,12 +76,12 @@ contract Create2FactoryTest is Test {
 
         // Expectations
         vm.startPrank(sender);
-        address expectedChild = create2_factory.getAddress(messageHash, signature, childBytecode);
-        vm.expectEmit(true, true, true, true, address(create2_factory));
+        address expectedChild = predictive_deployer.getAddress(messageHash, signature, childBytecode);
+        vm.expectEmit(true, true, true, true, address(predictive_deployer));
         emit Deploy(sender, expectedChild, keccak256(childBytecode), currentNonce);
 
         // Act
-        address actualChild = create2_factory.deploy(messageHash, signature, childBytecode);
+        address actualChild = predictive_deployer.deploy(messageHash, signature, childBytecode);
         vm.stopPrank();
 
         // Assertions
