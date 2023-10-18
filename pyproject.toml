@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "xsafe-contracts"
+version = "0.1.0"
+description = ""
+authors = [
+    "0xernesto <78889960+0xernesto@users.noreply.github.com>",
+    "cucupac <46691282+cucupac@users.noreply.github.com>",
+    "rahul0eth <63620041+rahul0eth@users.noreply.github.com>",
+]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+slither-analyzer = "^0.8.2"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
