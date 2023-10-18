@@ -16,11 +16,10 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
     bytes32 internal DOMAIN_SEPARATOR;
 
     // Factory Storage
-    address public trustedDeployer;
     mapping(address => uint256) public userNonces;
 
     // Events
-    event Deploy(address indexed signer, address indexed child, bytes32 hashedBytecode, uint256 nonce);
+    event Deploy(address indexed principal, address indexed child, bytes32 hashedBytecode, uint256 nonce);
 
     /// @dev No constructor, so initialize Ownable explicitly.
     function initialize() public initializer {
@@ -46,62 +45,59 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
 
     /**
      * @dev Computes the expected message hash.
-     * @param _signer The address of the account for whom this factory contract will deploy a child contract.
-     * @param _nonce The signer account's current nonce on this factory contract.
+     * @param _principal The address of the account for whom this factory contract will deploy a child contract.
+     * @param _nonce The principal account's current nonce on this factory contract.
      * @return messageHash The expected signed message hash.
      */
-    function _computeMessageHash(address _signer, uint256 _nonce) internal view returns (bytes32) {
-        bytes32 txHash = getTransactionHash(_signer, _nonce);
+    function _computeMessageHash(address _principal, uint256 _nonce) internal view returns (bytes32) {
+        bytes32 txHash = getTransactionHash(_principal, _nonce);
         return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", txHash));
     }
 
     /**
      * @dev Returns the unique deployment transaction hash to be signed.
-     * @param _signer The address of the account for whom this factory contract will deploy a child contract.
-     * @param _nonce The signer account's current nonce on this factory contract.
+     * @param _principal The address of the account for whom this factory contract will deploy a child contract.
+     * @param _nonce The principal account's current nonce on this factory contract.
      * @return txHash The unique deployment transaction hash to be signed.
      */
-    function getTransactionHash(address _signer, uint256 _nonce) public view returns (bytes32) {
-        return keccak256(abi.encodePacked(DOMAIN_SEPARATOR, _signer, _nonce));
+    function getTransactionHash(address _principal, uint256 _nonce) public view returns (bytes32) {
+        return keccak256(abi.encodePacked(DOMAIN_SEPARATOR, _principal, _nonce));
     }
 
     /**
      * @dev Returns the predicted address of a contract to be deployed before it's deployed.
-     * @param _signer The address of the account that signed the message hash.
+     * @param _principal The address of the account that signed the message hash.
      * @param _bytecode The bytecode of the contract to be deployed.
      * @return child The predicted address of the contract to be deployed.
      */
-    function getAddress(address _signer, bytes memory _bytecode) public view returns (address) {
-        uint256 salt = uint256(uint160(_signer)) + userNonces[_signer];
+    function getAddress(address _principal, bytes memory _bytecode) public view returns (address) {
+        uint256 salt = uint256(uint160(_principal)) + userNonces[_principal];
         bytes32 hash = keccak256(abi.encodePacked(bytes1(0xff), address(this), salt, keccak256(_bytecode)));
         return address(uint160(uint256(hash)));
     }
 
     /**
      * @dev Deploys arbitrary child contracts at predictable addresses, derived from account signatures.
-     * @param _signer The address of the account that signed the message hash.
-     * @param _signature The resulting signature from the signer account signing the messahge hash.
+     * @param _principal The address of the account that signed the message hash.
+     * @param _signature The resulting signature from the principal account signing the messahge hash.
      * @param _bytecode The bytecode of the contract to be deployed.
      * @return child The address of the deployed contract.
      */
-    function deploy(address _signer, bytes memory _signature, bytes memory _bytecode) public returns (address) {
-        uint256 currectNonce = userNonces[_signer];
-        bytes32 expectedMessageHash = _computeMessageHash(_signer, currectNonce);
+    function deploy(address _principal, bytes memory _signature, bytes memory _bytecode) public returns (address) {
+        uint256 currectNonce = userNonces[_principal];
+        bytes32 expectedMessageHash = _computeMessageHash(_principal, currectNonce);
 
-        // Recover signer address
+        // Recover principal address
         address recoveredSigner = ECDSA.recover(expectedMessageHash, _signature);
 
-        // Ensure the provided signer signed the _expected_ message
-        require(recoveredSigner == _signer, "Unauthorized.");
-
-        // Ensure that the sender is the rocovered signer or the trusted deployer
-        require(msg.sender == recoveredSigner || msg.sender == trustedDeployer, "Unauthorized.");
+        // Ensure the provided principal signed the expected message hash
+        require(recoveredSigner == _principal, "Unauthorized.");
 
         // Calculate salt
-        uint256 salt = uint256(uint160(_signer)) + currectNonce;
+        uint256 salt = uint256(uint160(_principal)) + currectNonce;
 
         // Update nonce state
-        userNonces[_signer]++;
+        userNonces[_principal]++;
 
         // Deploy contract
         address child;
@@ -110,7 +106,7 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
             if iszero(extcodesize(child)) { revert(0, 0) }
         }
 
-        emit Deploy(_signer, child, keccak256(_bytecode), currectNonce);
+        emit Deploy(_principal, child, keccak256(_bytecode), currectNonce);
         return child;
     }
 
@@ -119,14 +115,6 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
     **  Admin Functions
     **
     ******************************************************************************/
-
-    /**
-     * @dev Allow contract admin to set the address of the trustedDeployer account.
-     * @param _deployer The address of the account that's allowed to deploy on behalf of other accounts.
-     */
-    function setTrustedDeployer(address _deployer) public onlyOwner {
-        trustedDeployer = _deployer;
-    }
 
     /**
      * @dev Allow contract admin to extract native token.
