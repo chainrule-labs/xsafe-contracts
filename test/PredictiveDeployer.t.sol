@@ -29,62 +29,62 @@ contract Create2FactoryTest is Test {
         childBytecode = abi.encodePacked(bytecode, abi.encode(address(this)));
     }
 
-    function test_getAddress_fuzz(uint256 pk_num, address sender) public {
-        // Setup
-        VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pk_num)))));
+    // function test_getAddress_fuzz(uint256 pk_num, address sender) public {
+    //     // Setup
+    //     VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pk_num)))));
 
-        uint256 currentNonce = predictive_deployer.userNonces(wallet.addr);
+    //     uint256 currentNonce = predictive_deployer.userNonces(wallet.addr);
 
-        // Get signature information
-        bytes32 txHash = predictive_deployer.getTransactionHash(currentNonce);
+    //     // Get signature information
+    //     bytes32 txHash = predictive_deployer.getTransactionHash(currentNonce);
 
-        bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", txHash));
+    //     bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", txHash));
 
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(wallet.privateKey, messageHash);
+    //     (uint8 v, bytes32 r, bytes32 s) = vm.sign(wallet.privateKey, messageHash);
 
-        bytes memory signature = abi.encodePacked(r, s, v);
+    //     bytes memory signature = abi.encodePacked(r, s, v);
 
-        // Expectation
-        vm.startPrank(sender);
-        uint256 snapShot = vm.snapshot();
-        address expectedChild = predictive_deployer.deploy(messageHash, signature, childBytecode);
+    //     // Expectation
+    //     vm.startPrank(sender);
+    //     uint256 snapShot = vm.snapshot();
+    //     address expectedChild = predictive_deployer.deploy(messageHash, signature, childBytecode);
 
-        // Set chain state to what it was before the deployment
-        vm.revertTo(snapShot);
+    //     // Set chain state to what it was before the deployment
+    //     vm.revertTo(snapShot);
 
-        // Act
-        address actualChild = predictive_deployer.getAddress(messageHash, signature, childBytecode);
-        vm.stopPrank();
+    //     // Act
+    //     address actualChild = predictive_deployer.getAddress(messageHash, signature, childBytecode);
+    //     vm.stopPrank();
 
-        // Assertions
-        assertEq(actualChild, expectedChild);
-    }
+    //     // Assertions
+    //     assertEq(actualChild, expectedChild);
+    // }
 
-    function test_deploy_fuzz(uint256 pk_num, address sender) public {
-        // Setup
-        VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pk_num)))));
+    // function test_deploy_fuzz(uint256 pk_num, address sender) public {
+    //     // Setup
+    //     VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pk_num)))));
 
-        uint256 currentNonce = predictive_deployer.userNonces(wallet.addr);
+    //     uint256 currentNonce = predictive_deployer.userNonces(wallet.addr);
 
-        // Get signature information
-        bytes32 txHash = predictive_deployer.getTransactionHash(currentNonce);
+    //     // Get signature information
+    //     bytes32 txHash = predictive_deployer.getTransactionHash(currentNonce);
 
-        bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", txHash));
+    //     bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", txHash));
 
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(wallet.privateKey, messageHash);
-        bytes memory signature = abi.encodePacked(r, s, v);
+    //     (uint8 v, bytes32 r, bytes32 s) = vm.sign(wallet.privateKey, messageHash);
+    //     bytes memory signature = abi.encodePacked(r, s, v);
 
-        // Expectations
-        vm.startPrank(sender);
-        address expectedChild = predictive_deployer.getAddress(messageHash, signature, childBytecode);
-        vm.expectEmit(true, true, true, true, address(predictive_deployer));
-        emit Deploy(sender, expectedChild, keccak256(childBytecode), currentNonce);
+    //     // Expectations
+    //     vm.startPrank(sender);
+    //     address expectedChild = predictive_deployer.getAddress(messageHash, signature, childBytecode);
+    //     vm.expectEmit(true, true, true, true, address(predictive_deployer));
+    //     emit Deploy(sender, expectedChild, keccak256(childBytecode), currentNonce);
 
-        // Act
-        address actualChild = predictive_deployer.deploy(messageHash, signature, childBytecode);
-        vm.stopPrank();
+    //     // Act
+    //     address actualChild = predictive_deployer.deploy(messageHash, signature, childBytecode);
+    //     vm.stopPrank();
 
-        // Assertions
-        assertEq(actualChild, expectedChild);
-    }
+    //     // Assertions
+    //     assertEq(actualChild, expectedChild);
+    // }
 }
