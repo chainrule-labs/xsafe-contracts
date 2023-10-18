@@ -88,8 +88,8 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
      * @return child The address of the deployed contract.
      */
     function deploy(address _principal, bytes memory _signature, bytes memory _bytecode) public returns (address) {
-        uint256 currectNonce = userNonces[_principal];
-        bytes32 expectedMessageHash = _computeMessageHash(_principal, currectNonce);
+        uint256 currentNonce = userNonces[_principal];
+        bytes32 expectedMessageHash = _computeMessageHash(_principal, currentNonce);
 
         // Recover principal address
         address recoveredSigner = ECDSA.recover(expectedMessageHash, _signature);
@@ -98,7 +98,7 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
         if (recoveredSigner != _principal) revert Unauthorized();
 
         // Calculate salt
-        uint256 salt = uint256(uint160(_principal)) + currectNonce;
+        uint256 salt = uint256(uint160(_principal)) + currentNonce;
 
         // Update nonce state
         userNonces[_principal]++;
@@ -110,7 +110,7 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
             if iszero(extcodesize(child)) { revert(0, 0) }
         }
 
-        emit Deploy(_principal, child, keccak256(_bytecode), currectNonce);
+        emit Deploy(_principal, child, keccak256(_bytecode), currentNonce);
         return child;
     }
 
