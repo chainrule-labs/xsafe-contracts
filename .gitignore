@@ -1,11 +1,22 @@
-.DS_STORE
-
-out/
+# misc
+.DS_Store
+*.pem
 cache/
 broadcast/
-node_modules/
-package-lock.json
-.env
-.idea
 
-.vscode/
+# production
+out/
+
+# dependencies
+/node_modules
+
+# testing
+lcov.info
+.gas-snapshot
+
+# local env files
+.env
+
+# editor
+.vscode
+.idea

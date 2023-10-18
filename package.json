@@ -1,0 +1,38 @@
+{
+	"name": "xsafe-contracts",
+	"description": "Deterministic Multi-Chain Deployment",
+	"author": "Chain Rule, LLC",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/chainrule-labs/xsafe-contracts.git"
+	},
+	"scripts": {
+		"commit": "cz",
+		"coverage": "forge coverage --report lcov",
+		"format": "forge fmt",
+		"format:check": "forge fmt --check",
+		"lint:check": "solhint --config ./.solhint.json 'src/**/*.sol'",
+		"prepare": "husky install",
+		"snapshot": "forge snapshot",
+		"test": "forge test --optimize --fork-url https://rpc.ankr.com/eth && forge coverage && forge snapshot"
+	},
+	"commitlint": {
+		"extends": [
+			"@commitlint/config-conventional"
+		]
+	},
+	"config": {
+		"commitizen": {
+			"path": "cz-conventional-changelog"
+		}
+	},
+	"devDependencies": {
+		"@commitlint/cli": "^17.8.0",
+		"@commitlint/config-conventional": "^17.8.0",
+		"commitizen": "^4.3.0",
+		"cz-conventional-changelog": "^3.3.0",
+		"husky": "^8.0.0",
+		"solhint": "^3.6.2"
+	}
+}

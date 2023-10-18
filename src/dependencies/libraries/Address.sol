@@ -43,7 +43,7 @@ library Address {
             revert AddressInsufficientBalance(address(this));
         }
 
-        (bool success,) = recipient.call{value: amount}("");
+        (bool success,) = recipient.call{ value: amount }("");
         if (!success) {
             revert FailedInnerCall();
         }
@@ -84,7 +84,7 @@ library Address {
         if (address(this).balance < value) {
             revert AddressInsufficientBalance(address(this));
         }
-        (bool success, bytes memory returndata) = target.call{value: value}(data);
+        (bool success, bytes memory returndata) = target.call{ value: value }(data);
         return _verifyCallResultFromTarget(target, success, returndata);
     }
 

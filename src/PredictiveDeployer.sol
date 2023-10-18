@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
 
-import {ECDSA} from "./dependencies/cryptography/ECDSA.sol";
-import {SafeTransferLib, ERC20} from "solmate/utils/SafeTransferLib.sol";
-import {Initializable} from "./dependencies/proxy/utils/Initializable.sol";
-import {UUPSUpgradeable} from "./dependencies/proxy/utils/UUPSUpgradeable.sol";
-import {Ownable} from "./dependencies/access/Ownable.sol";
-import {IERC20} from "./dependencies/token/interfaces/IERC20.sol";
+import { ECDSA } from "./dependencies/cryptography/ECDSA.sol";
+import { SafeTransferLib, ERC20 } from "solmate/utils/SafeTransferLib.sol";
+import { Initializable } from "./dependencies/proxy/utils/Initializable.sol";
+import { UUPSUpgradeable } from "./dependencies/proxy/utils/UUPSUpgradeable.sol";
+import { Ownable } from "./dependencies/access/Ownable.sol";
+import { IERC20 } from "./dependencies/token/interfaces/IERC20.sol";
 
 contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
     // Private Constants: no SLOAD to save users gas
     address private constant CONTRACT_DEPLOYER = 0x76bd253e7a0FB5896b4ACA4b9ef06E9ee2b74e8E; // TODO: Update
 
     // EIP-712 Storage
-    bytes32 internal DOMAIN_SEPARATOR;
+    bytes32 internal domainSeparator;
 
     // Factory Storage
     mapping(address => uint256) public userNonces;
@@ -21,15 +21,19 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
     // Events
     event Deploy(address indexed principal, address indexed child, bytes32 hashedBytecode, uint256 nonce);
 
+    // Errors
+    error Unauthorized();
+
     /// @dev No constructor, so initialize Ownable explicitly.
     function initialize() public initializer {
-        require(msg.sender == CONTRACT_DEPLOYER, "Invalid caller.");
-        DOMAIN_SEPARATOR = _computeDomainSeparator();
+        if (msg.sender != CONTRACT_DEPLOYER) revert Unauthorized();
+        domainSeparator = _computeDomainSeparator();
         __Ownable_init();
     }
 
     /// @dev Required by the UUPS module.
-    function _authorizeUpgrade(address) internal override onlyOwner {}
+    // solhint-disable-next-line
+    function _authorizeUpgrade(address) internal override onlyOwner { }
 
     function _computeDomainSeparator() internal view returns (bytes32) {
         return keccak256(
@@ -61,7 +65,7 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
      * @return txHash The unique deployment transaction hash to be signed.
      */
     function getTransactionHash(address _principal, uint256 _nonce) public view returns (bytes32) {
-        return keccak256(abi.encodePacked(DOMAIN_SEPARATOR, _principal, _nonce));
+        return keccak256(abi.encodePacked(domainSeparator, _principal, _nonce));
     }
 
     /**
@@ -91,7 +95,7 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
         address recoveredSigner = ECDSA.recover(expectedMessageHash, _signature);
 
         // Ensure the provided principal signed the expected message hash
-        require(recoveredSigner == _principal, "Unauthorized.");
+        if (recoveredSigner != _principal) revert Unauthorized();
 
         // Calculate salt
         uint256 salt = uint256(uint160(_principal)) + currectNonce;
