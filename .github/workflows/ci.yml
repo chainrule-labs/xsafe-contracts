@@ -1,69 +1,70 @@
 name: ci
 on:
-  push:
-    branches:
-      - main
-  pull_request:
+    push:
+        branches:
+            - main
+    pull_request:
 
 env:
-  ETHEREUM_RPC: ${{ secrets.ETHEREUM_RPC }}
+    ETHEREUM_RPC: ${{ secrets.ETHEREUM_RPC }}
 
 jobs:
-  run-ci:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
+    run-ci:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v3
+              with:
+                  submodules: recursive
 
-      - uses: actions/setup-node@v3
+            - uses: actions/setup-node@v3
 
-      - name: Install node dependencies
-        run: npm install
+            - name: Install node dependencies
+              run: npm install
 
-      - name: Set up python
-        id: setup-python
-        uses: actions/setup-python@v3
-        with:
-          python-version: 3.9
+            - name: Set up python
+              id: setup-python
+              uses: actions/setup-python@v3
+              with:
+                  python-version: 3.9
 
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
+            - name: Install Poetry
+              uses: snok/install-poetry@v1
 
-      - name: Load cached venv
-        id: cached-poetry-dependencies
-        uses: actions/cache@v3
-        with:
-          path: .venv
-          key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
+            - name: Load cached venv
+              id: cached-poetry-dependencies
+              uses: actions/cache@v3
+              with:
+                  path: .venv
+                  key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
 
-      - name: Install python dependencies
-        run: poetry install --no-interaction
+            - name: Install python dependencies
+              run: poetry install --no-interaction
 
-      - name: Install Foundry
-        uses: onbjerg/foundry-toolchain@v1
-        with:
-          version: nightly
+            - name: Install Foundry
+              uses: onbjerg/foundry-toolchain@v1
+              with:
+                  version: nightly
 
-      - name: Pull Submodules
-        run: forge update
+            - name: Pull Submodules
+              run: forge update
 
-      - name: Check formatting
-        run: npm run format:check
+            - name: Check formatting
+              run: npm run format:check
 
-      - name: Check linting
-        run: npm run lint:check
+            - name: Check linting
+              run: npm run lint:check
 
-      - name: Run tests
-        run: forge test --optimize --fork-url ${{ env.ETHEREUM_RPC }}
+            - name: Run tests
+              run: forge test --optimize --fork-url ${{ env.ETHEREUM_RPC }}
 
-      - name: Coverage
-        run: |
-          forge coverage --report lcov
-        id: coverage
+            - name: Coverage
+              run: |
+                  sudo apt update && sudo apt install -y lcov
+                  npm run coverage
+              id: coverage
 
-      - uses: codecov/codecov-action@v2
+            - uses: codecov/codecov-action@v2
 
-      # Too slow to run regularly
-      #- name: Run audit
-      #  run: poetry run slither --solc-remaps @openzeppelin=lib/openzeppelin-contracts --solc-args optimize src/
+            # Too slow to run regularly
+            #- name: Run audit
+            #  run: poetry run slither --solc-remaps @openzeppelin=lib/openzeppelin-contracts --solc-args optimize src/

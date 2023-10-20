@@ -9,13 +9,14 @@
 	},
 	"scripts": {
 		"commit": "cz",
-		"coverage": "forge coverage --report lcov",
+		"coverage": "forge coverage --report lcov && npm run coverage:filter && npx lcov-summary lcov.info",
+		"coverage:filter": "lcov -r lcov.info 'test/*' 'script/*' 'src/dependencies/*' -o lcov.info",
 		"format": "forge fmt",
 		"format:check": "forge fmt --check",
 		"lint:check": "solhint --config ./.solhint.json 'src/**/*.sol'",
 		"prepare": "husky install",
 		"snapshot": "forge snapshot",
-		"test": "forge test --optimize --fork-url https://rpc.ankr.com/eth && forge coverage && forge snapshot"
+		"test": "forge test --optimize && npm run coverage && forge snapshot"
 	},
 	"commitlint": {
 		"extends": [
@@ -33,6 +34,7 @@
 		"commitizen": "^4.3.0",
 		"cz-conventional-changelog": "^3.3.0",
 		"husky": "^8.0.0",
+		"lcov-summary": "^1.0.1",
 		"solhint": "^3.6.2"
 	}
 }
