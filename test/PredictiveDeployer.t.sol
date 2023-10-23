@@ -3,13 +3,17 @@ pragma solidity ^0.8.21;
 
 import { Test } from "forge-std/Test.sol";
 import { PredictiveDeployer } from "../src/PredictiveDeployer.sol";
+import { ERC1967Proxy } from "../src/dependencies/proxy/ERC1967Proxy.sol";
 import { Child } from "./Child.t.sol";
 import { VmSafe } from "forge-std/Vm.sol";
+import { IPredictiveDeployerAdmin } from "../src/interfaces/IPredictiveDeployerAdmin.sol";
+import { CONTRACT_DEPLOYER } from "./common/constants.t.sol";
 
 contract PredictiveDeployerTest is Test {
     /* solhint-disable func-name-mixedcase */
 
-    PredictiveDeployer public predictive_deployer; // solhint-disable-line var-name-mixedcase
+    PredictiveDeployer public implementation;
+    ERC1967Proxy public proxy;
     Child public child;
     bytes public childBytecode;
 
@@ -17,7 +21,9 @@ contract PredictiveDeployerTest is Test {
     event Deploy(address indexed sender, address indexed child, bytes32 hashedBytecode, uint256 nonce);
 
     function setUp() public {
-        predictive_deployer = new PredictiveDeployer();
+        implementation = new PredictiveDeployer();
+        vm.prank(CONTRACT_DEPLOYER);
+        proxy = new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize()"));
         child = new Child(address(this));
 
         // Get Bytecode
@@ -29,10 +35,10 @@ contract PredictiveDeployerTest is Test {
         // Setup
         VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pkNum)))));
 
-        uint256 currentNonce = predictive_deployer.userNonces(wallet.addr);
+        uint256 currentNonce = IPredictiveDeployerAdmin(address(proxy)).userNonces(wallet.addr);
 
         // Get signature information
-        bytes32 txHash = predictive_deployer.getTransactionHash(wallet.addr, currentNonce);
+        bytes32 txHash = IPredictiveDeployerAdmin(address(proxy)).getTransactionHash(wallet.addr, currentNonce);
 
         bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", txHash));
 
@@ -43,13 +49,13 @@ contract PredictiveDeployerTest is Test {
         // Expectation
         vm.startPrank(sender);
         uint256 snapShot = vm.snapshot();
-        address expectedChild = predictive_deployer.deploy(wallet.addr, signature, childBytecode);
+        address expectedChild = IPredictiveDeployerAdmin(address(proxy)).deploy(wallet.addr, signature, childBytecode);
 
         // Set chain state to what it was before the deployment
         vm.revertTo(snapShot);
 
         // Act
-        address actualChild = predictive_deployer.getAddress(wallet.addr, childBytecode);
+        address actualChild = IPredictiveDeployerAdmin(address(proxy)).getAddress(wallet.addr, childBytecode);
         vm.stopPrank();
 
         // Assertions
@@ -60,10 +66,10 @@ contract PredictiveDeployerTest is Test {
         // Setup
         VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pkNum)))));
 
-        uint256 currentNonce = predictive_deployer.userNonces(wallet.addr);
+        uint256 currentNonce = IPredictiveDeployerAdmin(address(proxy)).userNonces(wallet.addr);
 
         // Get signature information
-        bytes32 txHash = predictive_deployer.getTransactionHash(wallet.addr, currentNonce);
+        bytes32 txHash = IPredictiveDeployerAdmin(address(proxy)).getTransactionHash(wallet.addr, currentNonce);
 
         bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", txHash));
 
@@ -72,12 +78,12 @@ contract PredictiveDeployerTest is Test {
 
         // Expectations
         vm.startPrank(sender);
-        address expectedChild = predictive_deployer.getAddress(wallet.addr, childBytecode);
-        vm.expectEmit(true, true, true, true, address(predictive_deployer));
+        address expectedChild = IPredictiveDeployerAdmin(address(proxy)).getAddress(wallet.addr, childBytecode);
+        vm.expectEmit(true, true, true, true, address(proxy));
         emit Deploy(wallet.addr, expectedChild, keccak256(childBytecode), currentNonce);
 
         // Act
-        address actualChild = predictive_deployer.deploy(wallet.addr, signature, childBytecode);
+        address actualChild = IPredictiveDeployerAdmin(address(proxy)).deploy(wallet.addr, signature, childBytecode);
         vm.stopPrank();
 
         // Assertions
@@ -88,10 +94,10 @@ contract PredictiveDeployerTest is Test {
         // Setup
         VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pkNum)))));
 
-        uint256 currentNonce = predictive_deployer.userNonces(wallet.addr);
+        uint256 currentNonce = IPredictiveDeployerAdmin(address(proxy)).userNonces(wallet.addr);
 
         // Get signature information
-        bytes32 txHash = predictive_deployer.getTransactionHash(wallet.addr, currentNonce);
+        bytes32 txHash = IPredictiveDeployerAdmin(address(proxy)).getTransactionHash(wallet.addr, currentNonce);
 
         bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", txHash));
 
@@ -99,11 +105,11 @@ contract PredictiveDeployerTest is Test {
         bytes memory signature = abi.encodePacked(r, s, v);
 
         // Deploy once
-        predictive_deployer.deploy(wallet.addr, signature, childBytecode);
+        IPredictiveDeployerAdmin(address(proxy)).deploy(wallet.addr, signature, childBytecode);
 
         // Act: attempt replay
         vm.expectRevert(PredictiveDeployer.Unauthorized.selector);
-        predictive_deployer.deploy(wallet.addr, signature, childBytecode);
+        IPredictiveDeployerAdmin(address(proxy)).deploy(wallet.addr, signature, childBytecode);
     }
 
     function test_CannotDeployWithoutApproval(uint256 pkNum, address invalidPrincipal) public {
@@ -113,10 +119,10 @@ contract PredictiveDeployerTest is Test {
         // Failing condition: principal is not the signer
         vm.assume(invalidPrincipal != wallet.addr);
 
-        uint256 currentNonce = predictive_deployer.userNonces(wallet.addr);
+        uint256 currentNonce = IPredictiveDeployerAdmin(address(proxy)).userNonces(wallet.addr);
 
         // Get signature information
-        bytes32 txHash = predictive_deployer.getTransactionHash(wallet.addr, currentNonce);
+        bytes32 txHash = IPredictiveDeployerAdmin(address(proxy)).getTransactionHash(wallet.addr, currentNonce);
 
         bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", txHash));
 
@@ -125,6 +131,6 @@ contract PredictiveDeployerTest is Test {
 
         // Act: attempt replay
         vm.expectRevert(PredictiveDeployer.Unauthorized.selector);
-        predictive_deployer.deploy(invalidPrincipal, signature, childBytecode);
+        IPredictiveDeployerAdmin(address(proxy)).deploy(invalidPrincipal, signature, childBytecode);
     }
 }
