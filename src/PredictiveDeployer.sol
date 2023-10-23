@@ -32,8 +32,7 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
     }
 
     /// @dev Required by the UUPS module.
-    // solhint-disable-next-line
-    function _authorizeUpgrade(address) internal override onlyOwner { }
+    function _authorizeUpgrade(address) internal override onlyOwner { } // solhint-disable-line no-empty-blocks
 
     function _computeDomainSeparator() internal view returns (bytes32) {
         return keccak256(
