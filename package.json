@@ -15,8 +15,7 @@
 		"format:check": "forge fmt --check",
 		"lint:check": "solhint --config ./.solhint.json 'src/**/*.sol'",
 		"prepare": "husky install",
-		"snapshot": "forge snapshot",
-		"test": "forge test --optimize && npm run coverage && npm run snapshot"
+		"test": "forge test --optimize && npm run coverage"
 	},
 	"commitlint": {
 		"extends": [

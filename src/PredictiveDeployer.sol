@@ -135,4 +135,6 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
 
         SafeTransferLib.safeTransfer(ERC20(_token), msg.sender, balance);
     }
+
+    receive() external payable { } // solhint-disable-line no-empty-blocks
 }
