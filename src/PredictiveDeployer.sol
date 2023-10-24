@@ -32,8 +32,7 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
     }
 
     /// @dev Required by the UUPS module.
-    // solhint-disable-next-line
-    function _authorizeUpgrade(address) internal override onlyOwner { }
+    function _authorizeUpgrade(address) internal override onlyOwner { } // solhint-disable-line no-empty-blocks
 
     function _computeDomainSeparator() internal view returns (bytes32) {
         return keccak256(
@@ -136,4 +135,6 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
 
         SafeTransferLib.safeTransfer(ERC20(_token), msg.sender, balance);
     }
+
+    receive() external payable { } // solhint-disable-line no-empty-blocks
 }
