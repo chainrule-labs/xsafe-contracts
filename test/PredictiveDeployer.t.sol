@@ -2,10 +2,10 @@
 pragma solidity ^0.8.21;
 
 import { Test } from "forge-std/Test.sol";
+import { VmSafe } from "forge-std/Vm.sol";
 import { PredictiveDeployer } from "../src/PredictiveDeployer.sol";
 import { ERC1967Proxy } from "../src/dependencies/proxy/ERC1967Proxy.sol";
 import { Child } from "./Child.t.sol";
-import { VmSafe } from "forge-std/Vm.sol";
 import { IPredictiveDeployer } from "../src/interfaces/IPredictiveDeployer.sol";
 import { CONTRACT_DEPLOYER } from "./common/constants.t.sol";
 
@@ -129,7 +129,7 @@ contract PredictiveDeployerTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(wallet.privateKey, messageHash);
         bytes memory signature = abi.encodePacked(r, s, v);
 
-        // Act: attempt replay
+        // Act: attempt with invalid principal
         vm.expectRevert(PredictiveDeployer.Unauthorized.selector);
         IPredictiveDeployer(address(proxy)).deploy(invalidPrincipal, signature, childBytecode);
     }
