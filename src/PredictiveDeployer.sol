@@ -16,7 +16,6 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
     bytes32 internal domainSeparator;
 
     // Factory Storage
-    //mapping(address => uint256) public userNonces;
     mapping(address => mapping(bytes32 => uint256)) public userNonces;
     mapping(address => address[]) public deploymentHistory;
 
@@ -66,6 +65,7 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
     /**
      * @dev Returns the unique deployment transaction hash to be signed.
      * @param _principal The address of the account for whom this factory contract will deploy a child contract.
+     * @param _bytecode The bytecode of the contract to be deployed.
      * @param _nonce The principal account's current nonce on this factory contract.
      * @return txHash The unique deployment transaction hash to be signed.
      */
@@ -106,7 +106,8 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
      * @return child The address of the deployed contract.
      */
     function deploy(address _principal, bytes memory _signature, bytes memory _bytecode) public returns (address) {
-        uint256 currentNonce = userNonces[_principal][keccak256(_bytecode)];
+        bytes32 hashedByteCode = keccak256(_bytecode);
+        uint256 currentNonce = userNonces[_principal][hashedByteCode];
         bytes32 expectedMessageHash = _computeMessageHash(_principal, _bytecode, currentNonce);
 
         // Recover principal address
@@ -119,7 +120,7 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
         uint256 salt = uint256(uint160(_principal)) + currentNonce;
 
         // Update nonce state
-        userNonces[_principal][keccak256(_bytecode)]++;
+        userNonces[_principal][hashedByteCode]++;
 
         // Deploy contract
         address child;
@@ -131,7 +132,7 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
         // Update deployment history
         deploymentHistory[_principal].push(child);
 
-        emit Deploy(_principal, child, keccak256(_bytecode), currentNonce);
+        emit Deploy(_principal, child, hashedByteCode, currentNonce);
         return child;
     }
 
