@@ -16,6 +16,7 @@ contract PredictiveDeployerTest is Test {
     ERC1967Proxy public proxy;
     Child public child;
     bytes public childBytecode;
+    bytes32 public hashedChildBytecode;
 
     // Events
     event Deploy(address indexed sender, address indexed child, bytes32 hashedBytecode, uint256 nonce);
@@ -29,16 +30,18 @@ contract PredictiveDeployerTest is Test {
         // Get Bytecode
         bytes memory bytecode = type(Child).creationCode;
         childBytecode = abi.encodePacked(bytecode, abi.encode(address(this)));
+        hashedChildBytecode = keccak256(childBytecode);
     }
 
     function testFuzz_GetAddress(uint256 pkNum, address sender) public {
         // Setup
         VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pkNum)))));
 
-        uint256 currentNonce = IPredictiveDeployer(address(proxy)).userNonces(wallet.addr);
+        uint256 currentNonce = IPredictiveDeployer(address(proxy)).userNonces(wallet.addr, hashedChildBytecode);
 
         // Get signature information
-        bytes32 txHash = IPredictiveDeployer(address(proxy)).getTransactionHash(wallet.addr, currentNonce);
+        bytes32 txHash =
+            IPredictiveDeployer(address(proxy)).getTransactionHash(wallet.addr, childBytecode, currentNonce);
 
         bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", txHash));
 
@@ -66,10 +69,11 @@ contract PredictiveDeployerTest is Test {
         // Setup
         VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pkNum)))));
 
-        uint256 currentNonce = IPredictiveDeployer(address(proxy)).userNonces(wallet.addr);
+        uint256 currentNonce = IPredictiveDeployer(address(proxy)).userNonces(wallet.addr, hashedChildBytecode);
 
         // Get signature information
-        bytes32 txHash = IPredictiveDeployer(address(proxy)).getTransactionHash(wallet.addr, currentNonce);
+        bytes32 txHash =
+            IPredictiveDeployer(address(proxy)).getTransactionHash(wallet.addr, childBytecode, currentNonce);
 
         bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", txHash));
 
@@ -90,14 +94,42 @@ contract PredictiveDeployerTest is Test {
         assertEq(actualChild, expectedChild);
     }
 
-    function test_CannotDeployReplay(uint256 pkNum) public {
+    // helper function
+    function deployChild(VmSafe.Wallet memory wallet, bytes memory bytecode, bytes32 hashedBytecode)
+        internal
+        returns (address)
+    {
+        uint256 currentNonce = IPredictiveDeployer(address(proxy)).userNonces(wallet.addr, hashedBytecode);
+        bytes32 txHash = IPredictiveDeployer(address(proxy)).getTransactionHash(wallet.addr, bytecode, currentNonce);
+        bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", txHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(wallet.privateKey, messageHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+        return IPredictiveDeployer(address(proxy)).deploy(wallet.addr, signature, bytecode);
+    }
+
+    function testFuzz_DeployTwice(uint256 pkNum) public {
         // Setup
         VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pkNum)))));
 
-        uint256 currentNonce = IPredictiveDeployer(address(proxy)).userNonces(wallet.addr);
+        // First Deployment
+        address actualChild1 = deployChild(wallet, childBytecode, hashedChildBytecode);
+
+        // Second Deployment
+        address actualChild2 = deployChild(wallet, childBytecode, hashedChildBytecode);
+
+        // Assertions
+        require(actualChild1 != actualChild2, "Addresses should not be equal");
+    }
+
+    function testFuzz_CannotDeployReplay(uint256 pkNum) public {
+        // Setup
+        VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pkNum)))));
+
+        uint256 currentNonce = IPredictiveDeployer(address(proxy)).userNonces(wallet.addr, hashedChildBytecode);
 
         // Get signature information
-        bytes32 txHash = IPredictiveDeployer(address(proxy)).getTransactionHash(wallet.addr, currentNonce);
+        bytes32 txHash =
+            IPredictiveDeployer(address(proxy)).getTransactionHash(wallet.addr, childBytecode, currentNonce);
 
         bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", txHash));
 
@@ -112,17 +144,18 @@ contract PredictiveDeployerTest is Test {
         IPredictiveDeployer(address(proxy)).deploy(wallet.addr, signature, childBytecode);
     }
 
-    function test_CannotDeployWithoutApproval(uint256 pkNum, address invalidPrincipal) public {
+    function testFuzz_CannotDeployWithoutApproval(uint256 pkNum, address invalidPrincipal) public {
         // Setup
         VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pkNum)))));
 
         // Failing condition: principal is not the signer
         vm.assume(invalidPrincipal != wallet.addr);
 
-        uint256 currentNonce = IPredictiveDeployer(address(proxy)).userNonces(wallet.addr);
+        uint256 currentNonce = IPredictiveDeployer(address(proxy)).userNonces(wallet.addr, hashedChildBytecode);
 
         // Get signature information
-        bytes32 txHash = IPredictiveDeployer(address(proxy)).getTransactionHash(wallet.addr, currentNonce);
+        bytes32 txHash =
+            IPredictiveDeployer(address(proxy)).getTransactionHash(wallet.addr, childBytecode, currentNonce);
 
         bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", txHash));
 
@@ -134,7 +167,40 @@ contract PredictiveDeployerTest is Test {
         IPredictiveDeployer(address(proxy)).deploy(invalidPrincipal, signature, childBytecode);
     }
 
-    function test_Receive(uint256 transferAmount) public {
+    function testFuzz_DeployAndUpdateNonce(uint256 pkNum) public {
+        // Setup
+        VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pkNum)))));
+
+        // Get initial nonce
+        uint256 initialNonce = IPredictiveDeployer(address(proxy)).userNonces(wallet.addr, hashedChildBytecode);
+
+        // Deploy
+        address actualChild = deployChild(wallet, childBytecode, hashedChildBytecode);
+
+        // Get updated nonce
+        uint256 updatedNonce = IPredictiveDeployer(address(proxy)).userNonces(wallet.addr, hashedChildBytecode);
+
+        // Assertions
+        require(actualChild != address(0), "Deployment failed");
+        require(updatedNonce == initialNonce + 1, "Nonce did not update correctly");
+    }
+
+    function testFuzz_getBytecodeHash(bytes memory _childBytecode) public {
+        if (_childBytecode.length == 0) {
+            return; // Skip the test for empty bytecode
+        }
+
+        // Act
+        bytes32 actualHash = IPredictiveDeployer(address(proxy)).getBytecodeHash(_childBytecode);
+
+        // Expected
+        bytes32 expectedHash = keccak256(_childBytecode);
+
+        // Assertions
+        assertEq(actualHash, expectedHash, "Hash mismatch");
+    }
+
+    function testFuzz_Receive(uint256 transferAmount) public {
         // Assumptions
         vm.assume(transferAmount != 0 && transferAmount <= 1000 ether);
 
