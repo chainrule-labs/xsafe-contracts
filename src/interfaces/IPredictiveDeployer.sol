@@ -3,6 +3,7 @@ pragma solidity ^0.8.21;
 
 interface IPredictiveDeployer {
     function userNonces(address _principal, bytes32 _hashedBytecode) external returns (uint256);
+    function getDeploymentHistory(address _principal) external returns (address[] memory);
     function getTransactionHash(address _principal, bytes memory _bytecode, uint256 _nonce)
         external
         returns (bytes32);

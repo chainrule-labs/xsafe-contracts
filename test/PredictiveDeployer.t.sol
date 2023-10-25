@@ -4,13 +4,16 @@ pragma solidity ^0.8.21;
 import { VmSafe } from "forge-std/Vm.sol";
 import { PredictiveDeployer } from "../src/PredictiveDeployer.sol";
 import { ERC1967Proxy } from "../src/dependencies/proxy/ERC1967Proxy.sol";
-import { TestSetup } from "./common/TestSetup.t.sol";
-import { DeploymentHelper } from "./helpers/DeploymentHelper.t.sol";
 import { IPredictiveDeployer } from "../src/interfaces/IPredictiveDeployer.sol";
+import { TestSetup } from "./common/TestSetup.t.sol";
+import { AddressLib } from "./helpers/libraries/AddressLib.t.sol";
+import { DeploymentHelper } from "./helpers/DeploymentHelper.t.sol";
 import { CONTRACT_DEPLOYER } from "./common/Constants.t.sol";
 
 contract PredictiveDeployerTest is DeploymentHelper, TestSetup {
     /* solhint-disable func-name-mixedcase */
+
+    using AddressLib for address[];
 
     function testFuzz_GetAddress(uint256 pkNum, address sender) public {
         // Setup
@@ -67,12 +70,10 @@ contract PredictiveDeployerTest is DeploymentHelper, TestSetup {
 
         // Act
         address actualChild = IPredictiveDeployer(address(proxy)).deploy(wallet.addr, signature, bytecodeChildA);
-        uint256 postDeployNonce = IPredictiveDeployer(address(proxy)).userNonces(wallet.addr, hashedBytecodeChildA);
         vm.stopPrank();
 
         // Assertions
         assertEq(actualChild, expectedChild);
-        assertEq(postDeployNonce, preDeployNonce + 1);
     }
 
     function testFuzz_DeployTwice(uint256 pkNum) public {
@@ -109,6 +110,44 @@ contract PredictiveDeployerTest is DeploymentHelper, TestSetup {
         // Assertions
         assertEq(setOneChildA, setTwoChildA);
         assertEq(setOneChildB, setTwoChildB);
+    }
+
+    function testFuzz_DeployNonceUpdate(uint256 pkNum) public {
+        // Setup
+        VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pkNum)))));
+        uint256 preDeployNonce = IPredictiveDeployer(address(proxy)).userNonces(wallet.addr, hashedBytecodeChildA);
+
+        // Act
+        deployChild(address(proxy), wallet, bytecodeChildA);
+        uint256 postDeployNonce = IPredictiveDeployer(address(proxy)).userNonces(wallet.addr, hashedBytecodeChildA);
+
+        // Assertions
+        assertEq(postDeployNonce, preDeployNonce + 1);
+    }
+
+    function testFuzz_DeployHistoryUpdate(uint256 pkNum) public {
+        // Setup
+        VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pkNum)))));
+
+        address[] memory deploymentHistory = IPredictiveDeployer(address(proxy)).getDeploymentHistory(wallet.addr);
+
+        // Pre-act assertions
+        assertEq(deploymentHistory.length, 0);
+
+        // Act
+        address child1 = deployChild(address(proxy), wallet, bytecodeChildA);
+        deploymentHistory = IPredictiveDeployer(address(proxy)).getDeploymentHistory(wallet.addr);
+
+        // Assertions
+        assertEq(deploymentHistory.length, 1);
+        assertTrue(deploymentHistory.includes(child1));
+
+        address child2 = deployChild(address(proxy), wallet, bytecodeChildA);
+        deploymentHistory = IPredictiveDeployer(address(proxy)).getDeploymentHistory(wallet.addr);
+
+        // Assertions
+        assertEq(deploymentHistory.length, 2);
+        assertTrue(deploymentHistory.includes(child2));
     }
 
     function testFuzz_CannotDeployReplay(uint256 pkNum) public {

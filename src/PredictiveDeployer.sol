@@ -17,7 +17,7 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
 
     // Factory Storage
     mapping(address => mapping(bytes32 => uint256)) public userNonces;
-    mapping(address => address[]) public deploymentHistory;
+    mapping(address => address[]) internal _deploymentHistory;
 
     // Events
     event Deploy(address indexed principal, address indexed child, bytes32 hashedBytecode, uint256 nonce);
@@ -99,6 +99,15 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
     }
 
     /**
+     * @dev Returns a list of the provided principal's previously deployed child contracts.
+     * @param _principal The address of the account that signed the message hash.
+     * @return deploymentHistory A list of the provided principal's previously deployed child contracts.
+     */
+    function getDeploymentHistory(address _principal) public view returns (address[] memory) {
+        return _deploymentHistory[_principal];
+    }
+
+    /**
      * @dev Deploys arbitrary child contracts at predictable addresses, derived from account signatures.
      * @param _principal The address of the account that signed the message hash.
      * @param _signature The resulting signature from the principal account signing the messahge hash.
@@ -130,11 +139,13 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
         }
 
         // Update deployment history
-        deploymentHistory[_principal].push(child);
+        _deploymentHistory[_principal].push(child);
 
         emit Deploy(_principal, child, hashedByteCode, currentNonce);
         return child;
     }
+
+    receive() external payable { } // solhint-disable-line no-empty-blocks
 
     /* ****************************************************************************
     **
@@ -158,6 +169,4 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
 
         SafeTransferLib.safeTransfer(ERC20(_token), msg.sender, balance);
     }
-
-    receive() external payable { } // solhint-disable-line no-empty-blocks
 }
