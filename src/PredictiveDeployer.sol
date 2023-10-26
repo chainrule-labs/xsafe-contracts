@@ -10,7 +10,7 @@ import { IERC20 } from "./dependencies/token/interfaces/IERC20.sol";
 
 contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
     // Private Constants: no SLOAD to save users gas
-    address private constant CONTRACT_DEPLOYER = 0x76bd253e7a0FB5896b4ACA4b9ef06E9ee2b74e8E; // TODO: Update
+    address private constant CONTRACT_DEPLOYER = 0x3790e085cD4FC7a12270DaEedc5c208aFc35bB0F; // TODO: Update
 
     // EIP-712 Storage
     bytes32 internal domainSeparator;
