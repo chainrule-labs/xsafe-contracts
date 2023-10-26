@@ -16,7 +16,8 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
     bytes32 internal domainSeparator;
 
     // Factory Storage
-    mapping(address => uint256) public userNonces;
+    mapping(address => mapping(bytes32 => uint256)) public userNonces;
+    mapping(address => address[]) internal _deploymentHistory;
 
     // Events
     event Deploy(address indexed principal, address indexed child, bytes32 hashedBytecode, uint256 nonce);
@@ -52,19 +53,28 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
      * @param _nonce The principal account's current nonce on this factory contract.
      * @return messageHash The expected signed message hash.
      */
-    function _computeMessageHash(address _principal, uint256 _nonce) internal view returns (bytes32) {
-        bytes32 txHash = getTransactionHash(_principal, _nonce);
+    function _computeMessageHash(address _principal, bytes memory _bytecode, uint256 _nonce)
+        internal
+        view
+        returns (bytes32)
+    {
+        bytes32 txHash = getTransactionHash(_principal, _bytecode, _nonce);
         return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", txHash));
     }
 
     /**
      * @dev Returns the unique deployment transaction hash to be signed.
      * @param _principal The address of the account for whom this factory contract will deploy a child contract.
+     * @param _bytecode The bytecode of the contract to be deployed.
      * @param _nonce The principal account's current nonce on this factory contract.
      * @return txHash The unique deployment transaction hash to be signed.
      */
-    function getTransactionHash(address _principal, uint256 _nonce) public view returns (bytes32) {
-        return keccak256(abi.encodePacked(domainSeparator, _principal, _nonce));
+    function getTransactionHash(address _principal, bytes memory _bytecode, uint256 _nonce)
+        public
+        view
+        returns (bytes32)
+    {
+        return keccak256(abi.encodePacked(domainSeparator, _principal, _bytecode, _nonce));
     }
 
     /**
@@ -74,9 +84,27 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
      * @return child The predicted address of the contract to be deployed.
      */
     function getAddress(address _principal, bytes memory _bytecode) public view returns (address) {
-        uint256 salt = uint256(uint160(_principal)) + userNonces[_principal];
+        uint256 salt = uint256(uint160(_principal)) + userNonces[_principal][keccak256(_bytecode)];
         bytes32 hash = keccak256(abi.encodePacked(bytes1(0xff), address(this), salt, keccak256(_bytecode)));
         return address(uint160(uint256(hash)));
+    }
+
+    /**
+     * @dev Returns the keccak256 hash of the provided bytecode.
+     * @param _bytecode The bytecode of the contract to be deployed.
+     * @return hash The keccak256 hash of the provided bytecode.
+     */
+    function getBytecodeHash(bytes memory _bytecode) public pure returns (bytes32) {
+        return keccak256(_bytecode);
+    }
+
+    /**
+     * @dev Returns a list of the provided principal's previously deployed child contracts.
+     * @param _principal The address of the account that signed the message hash.
+     * @return deploymentHistory A list of the provided principal's previously deployed child contracts.
+     */
+    function getDeploymentHistory(address _principal) public view returns (address[] memory) {
+        return _deploymentHistory[_principal];
     }
 
     /**
@@ -87,8 +115,9 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
      * @return child The address of the deployed contract.
      */
     function deploy(address _principal, bytes memory _signature, bytes memory _bytecode) public returns (address) {
-        uint256 currentNonce = userNonces[_principal];
-        bytes32 expectedMessageHash = _computeMessageHash(_principal, currentNonce);
+        bytes32 hashedByteCode = keccak256(_bytecode);
+        uint256 currentNonce = userNonces[_principal][hashedByteCode];
+        bytes32 expectedMessageHash = _computeMessageHash(_principal, _bytecode, currentNonce);
 
         // Recover principal address
         address recoveredSigner = ECDSA.recover(expectedMessageHash, _signature);
@@ -100,7 +129,7 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
         uint256 salt = uint256(uint160(_principal)) + currentNonce;
 
         // Update nonce state
-        userNonces[_principal]++;
+        userNonces[_principal][hashedByteCode]++;
 
         // Deploy contract
         address child;
@@ -109,9 +138,14 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
             if iszero(extcodesize(child)) { revert(0, 0) }
         }
 
-        emit Deploy(_principal, child, keccak256(_bytecode), currentNonce);
+        // Update deployment history
+        _deploymentHistory[_principal].push(child);
+
+        emit Deploy(_principal, child, hashedByteCode, currentNonce);
         return child;
     }
+
+    receive() external payable { } // solhint-disable-line no-empty-blocks
 
     /* ****************************************************************************
     **
@@ -135,6 +169,4 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
 
         SafeTransferLib.safeTransfer(ERC20(_token), msg.sender, balance);
     }
-
-    receive() external payable { } // solhint-disable-line no-empty-blocks
 }

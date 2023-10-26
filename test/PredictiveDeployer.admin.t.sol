@@ -6,20 +6,11 @@ import { PredictiveDeployer } from "../src/PredictiveDeployer.sol";
 import { ERC1967Proxy } from "../src/dependencies/proxy/ERC1967Proxy.sol";
 import { IERC20 } from "../src/dependencies/token/interfaces/IERC20.sol";
 import { IPredictiveDeployerAdmin } from "../src/interfaces/IPredictiveDeployerAdmin.sol";
-import { CONTRACT_DEPLOYER, TEST_ERC20_TOKEN } from "./common/constants.t.sol";
+import { TestSetup } from "./common/TestSetup.t.sol";
+import { CONTRACT_DEPLOYER, TEST_ERC20_TOKEN } from "./common/Constants.t.sol";
 
-contract PredictiveDeployerTest is Test {
+contract PredictiveDeployerTest is TestSetup {
     /* solhint-disable func-name-mixedcase */
-
-    PredictiveDeployer public implementation;
-    ERC1967Proxy public proxy;
-
-    function setUp() public {
-        // Instantiate contracts
-        implementation = new PredictiveDeployer();
-        vm.prank(CONTRACT_DEPLOYER);
-        proxy = new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize()"));
-    }
 
     function test_ExtractNative(uint256 amount) public {
         // Setup

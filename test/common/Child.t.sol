@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.21;
 
-contract Child {
+contract ChildA {
     uint256 public number;
     address public admin;
 
@@ -11,6 +11,14 @@ contract Child {
 
     function increment() public {
         require(msg.sender == admin, "Unauthorized.");
+        number++;
+    }
+}
+
+contract ChildB {
+    uint256 public number;
+
+    function increment() public {
         number++;
     }
 }

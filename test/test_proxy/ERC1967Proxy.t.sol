@@ -1,24 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.21;
 
-import { Test } from "forge-std/Test.sol";
 import { PredictiveDeployer } from "../../src/PredictiveDeployer.sol";
 import { ERC1967Proxy } from "../../src/dependencies/proxy/ERC1967Proxy.sol";
 import { IPredictiveDeployerAdmin } from "../../src/interfaces/IPredictiveDeployerAdmin.sol";
-import { CONTRACT_DEPLOYER } from "../common/constants.t.sol";
+import { TestSetup } from "../common/TestSetup.t.sol";
+import { CONTRACT_DEPLOYER } from "../common/Constants.t.sol";
 
-contract ERC1967ProxyTest is Test {
+contract ERC1967ProxyTest is TestSetup {
     /* solhint-disable func-name-mixedcase */
-
-    // Test Contracts
-    PredictiveDeployer public implementation;
-    ERC1967Proxy public proxy;
-
-    function setUp() public {
-        implementation = new PredictiveDeployer();
-        vm.prank(CONTRACT_DEPLOYER);
-        proxy = new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize()"));
-    }
 
     function test_upgradeToAndCall() public {
         // Setup
