@@ -2,32 +2,43 @@
 
 Deterministic Multi-Chain Deployment
 
-FRONTEND:
+Frontend:
 
-WE ALSO HANDLE SIGNATURES CAREFULLY ON FRONTEND
+We also handle signatures carefully on frontend
 
--   MINIMIZE RISK OF SIGNATURES GETTING STOLEN
--   AFTER SIGNING, PROMPT TRANSACTION. IF SUBMITTED, CLEAR STATE. IF NOT, CLEAR STATE, PROMPT SIGN AGAIN.
+-   Minimize risk of signatures getting stolen
+-   After signing, prompt transaction. If submitted, clear state. If not, clear state, prompt sign again.
 
-CONTRACTS:
+Contracts:
 
-WE ONLY ACCEPT SIGNATURES RELEVANT TO OUR SPECIFIC CONTRACT FUNCTIONALITY
+We only accept signatures relevant to our specific contract functionality
 
--   NO ACTIONS CAN TAKE PLACE THAT WERE NOT DIRECTLY AUTHORIZED
--   STOLEN SIGNATURES, FOR OTHER MEANS, DO NOT PROMPT DEPLOYMENTS ON OUR FACTORY CONTRACT
+-   No actions can take place that were not directly authorized
+-   Stolen signatures, for other means, do not prompt deployments on our factory contract
 
-WE MANDATE THAT ONLY SIGNER AND XSAFE CAN SUBMIT SIGNATURES FOR DEPLOYMENT
+We mandate that only signer and xsafe can submit signatures for deployment
 
--   THE POWER TO EXECUTE A DEPOYMENT IS LIMITED TO SALT PRIVATE KEY HOLDER AND XSAFE
+-   The power to execute a depoyment is limited to salt private key holder and xsafe
 
-DEPLOYMENT REQUIRES SIGNATURE, NOT ADDRESS DIRECTLY
+Deployment requires signature, not address directly
 
--   SALT IS A FUNCTION OF ADDRESS - ANYONE CAN SUBMIT AN ADDRESS. ONLY PRIVATE KEYHOLDER CAN SUBMIT SIGNATURE
--   WITH SIGNATURE METHOD, THE ONLY WAY TO OBTAIN A SALT, TIED TO AN ADDRESS, IS TO OWN THAT ADDRESS' PRIVATE KEY
--   ONLY RIGHTFUL OWNERS CAN DEPLOY THEIR CONTRACTS AT THEIR DETERMINISTIC ADDRESSES
+-   Salt is a function of address - anyone can submit an address. Only private keyholder can submit signature
+-   With signature method, the only way to obtain a salt, tied to an address, is to own that address' private key
+-   Only rightful owners can deploy their contracts at their deterministic addresses
 
-USER NONCE IS DEPENDENT ON THE BYTECODE OF THE FUNCTION
--   RATIONALE: USER DOES NOT NEED TO TRACK THE ORDER IN WHICH THEY DEPLOY CONTRACTS A, B, C... ON CHAIN 1 | B, A, C... ON CHAIN 2
--   IN AN EFFORT TO KEEP THE SIGNABLE TRANSACTION HASH UNIQUE FOR EACH TRANSACTION, BYTECODE IS INCLUDED IN THE HAS
--   WE CHOSE NOT TO INCLUDE BYTECODE IN THE SALT BECAUSE CREATE2 IS A HASH OF THE BYTECODE AND THE SALT. 
-    -   EVEN IF THE SALT IS THE SAME FOR CONTRACT A AND B, THEY WILL HAVE DIFFERENT BYTECODES AND THUS DIFFERENT ADDRESSES.
+User nonce is dependent on the bytecode of the function
+
+-   Rationale: user does not need to track the order in which they deploy contracts a, b, c... On chain 1 | b, a, c... On chain 2
+-   In an effort to keep the signable transaction hash unique for each transaction, bytecode is included in the has
+-   We chose not to include bytecode in the salt because create2 is a hash of the bytecode and the salt.
+    -   Even if the salt is the same for contract a and b, they will have different bytecodes and thus different addresses.
+
+Create3 constructor arg independent deployer notes
+
+-   Child address is order-independent so long as the stripped bytecode differs on same chain and different chains
+    -   Example: deploy a, b, c in any order you want on different chains and still guarantee correct addresses on each chain
+-   Child address is order-dependent multiple contracts share the same stripped bytecode and differing constructor args
+    -   Example: on chain 1, deploy person contract with constructor arg, bob; deploy person contract with constructor arg, alice.
+        If, on Chain 2, alice contract was deployed before bob contract, the chain 2 alice contract would take the chain 1 bob contract's address.
+-   If user messes up constructor args on a single chain, all chain deployments must be redone if address uniformity is required.
+    This is true for all multi-chain contract deployments (manual, create2, and create3).
