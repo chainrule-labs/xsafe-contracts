@@ -41,7 +41,7 @@ contract Create3FactoryTest is DeploymentHelper, TestSetup {
         vm.stopPrank();
 
         // Assertions
-        assertEq(actualChild, expectedChild, "Equivalence violation: actualChild and expectedChild.");
+        assertEq(actualChild, expectedChild, "Equivalence violation: actualChild != expectedChild");
     }
 
     function testFuzz_Deploy(uint256 pkNum, address sender) public {
@@ -76,7 +76,7 @@ contract Create3FactoryTest is DeploymentHelper, TestSetup {
         vm.stopPrank();
 
         // Assertions
-        assertEq(actualChild, expectedChild, "Equivalence violation: actualChild and expectedChild.");
+        assertEq(actualChild, expectedChild, "Equivalence violation: actualChild != expectedChild");
     }
 
     function testFuzz_DeployTwice(uint256 pkNum) public {
@@ -125,8 +125,8 @@ contract Create3FactoryTest is DeploymentHelper, TestSetup {
         address setTwoChildA = setTwoDeployementHistory[1];
 
         // Assertions
-        assertEq(setOneChildA, setTwoChildA, "Equivalence violation: setOneChildA and setTwoChildA.");
-        assertEq(setOneChildB, setTwoChildB, "Equivalence violation: setOneChildB and setTwoChildB.");
+        assertEq(setOneChildA, setTwoChildA, "Equivalence violation: setOneChildA != setTwoChildA");
+        assertEq(setOneChildB, setTwoChildB, "Equivalence violation: setOneChildB != setTwoChildB");
     }
 
     function testFuzz_DeployNonceUpdate(uint256 pkNum) public {
@@ -139,7 +139,7 @@ contract Create3FactoryTest is DeploymentHelper, TestSetup {
         uint256 postDeployNonce = ICreate3Factory(address(proxy)).userNonces(wallet.addr, hashedStrippedBytecodeChildA);
 
         // Assertions
-        assertEq(postDeployNonce, preDeployNonce + 1, "Equivalence violation: postDeployNonce and preDeployNonce + 1.");
+        assertEq(postDeployNonce, preDeployNonce + 1, "Equivalence violation: postDeployNonce != preDeployNonce + 1");
     }
 
     function testFuzz_DeployHistoryUpdate(uint256 pkNum) public {
@@ -159,8 +159,8 @@ contract Create3FactoryTest is DeploymentHelper, TestSetup {
         deploymentHistory = ICreate3Factory(address(proxy)).getDeploymentHistory(wallet.addr);
 
         // Assertions 1
-        assertEq(deploymentHistory.length, 1, "Equivalence violation: deploymentHistory.length and 1.");
-        assertTrue(deploymentHistory.includes(child1), "Truth Violation: deploymentHistory.includes(child1).");
+        assertEq(deploymentHistory.length, 1, "Equivalence violation: deploymentHistory.length != 1");
+        assertTrue(deploymentHistory.includes(child1), "Truth Violation: deploymentHistory.includes(child1)");
 
         // Expectation 2
         address child2 = ICreate3Factory(address(proxy)).getAddress(wallet.addr, strippedBytecodeChildA);
@@ -170,8 +170,8 @@ contract Create3FactoryTest is DeploymentHelper, TestSetup {
         deploymentHistory = ICreate3Factory(address(proxy)).getDeploymentHistory(wallet.addr);
 
         // Assertions 2
-        assertEq(deploymentHistory.length, 2, "Equivalence violation: deploymentHistory.length and 2.");
-        assertTrue(deploymentHistory.includes(child2), "Truth Violation: deploymentHistory.includes(child2).");
+        assertEq(deploymentHistory.length, 2, "Equivalence violation: deploymentHistory.length != 2");
+        assertTrue(deploymentHistory.includes(child2), "Truth Violation: deploymentHistory.includes(child2)");
     }
 
     function testFuzz_CannotDeployReplay(uint256 pkNum) public {
@@ -226,7 +226,7 @@ contract Create3FactoryTest is DeploymentHelper, TestSetup {
         bytes32 expectedHash = keccak256(_childStrippedBytecode);
 
         // Assertions
-        assertEq(actualHash, expectedHash, "Equivalence Violation: actualHash and expectedHash.");
+        assertEq(actualHash, expectedHash, "Equivalence Violation: actualHash != expectedHash");
     }
 
     function testFuzz_Receive(uint256 transferAmount) public {

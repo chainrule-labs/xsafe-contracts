@@ -17,7 +17,7 @@ contract Create3FactoryAdminTest is TestSetup {
         vm.assume(amount > 0 && amount < 1e22);
         vm.deal(address(proxy), amount);
 
-        assertEq(address(proxy).balance, amount, "Equivalence Violation: address(proxy) native balance and amount.");
+        assertEq(address(proxy).balance, amount, "Equivalence Violation: native balance != amount");
 
         uint256 preLocalBalance = CONTRACT_DEPLOYER.balance;
 
@@ -28,7 +28,7 @@ contract Create3FactoryAdminTest is TestSetup {
         assertEq(
             CONTRACT_DEPLOYER.balance,
             preLocalBalance + amount,
-            "Equivalence Violation: CONTRACT_DEPLOYER native balance and preLocalBalance + amount."
+            "Equivalence Violation: native balance != preLocalBalance + amount."
         );
     }
 
@@ -63,7 +63,7 @@ contract Create3FactoryForkTest is Test {
     }
 
     function test_ActiveFork() public {
-        assertEq(vm.activeFork(), mainnetFork, "Equivalence Violation: vm.activeFork() and mainnetFork.");
+        assertEq(vm.activeFork(), mainnetFork, "Equivalence Violation: vm.activeFork() != mainnetFork");
     }
 
     function test_ExtractERC20(uint256 amount) public {
@@ -75,9 +75,7 @@ contract Create3FactoryForkTest is Test {
 
         // Pre-action assertions
         assertEq(
-            IERC20(TEST_ERC20_TOKEN).balanceOf(address(proxy)),
-            amount,
-            "Equivalence Violation: address(proxy) TEST_ERC20_TOKEN balance and amount."
+            IERC20(TEST_ERC20_TOKEN).balanceOf(address(proxy)), amount, "Equivalence Violation: ERC20 balance != amount"
         );
 
         // Act
@@ -85,15 +83,11 @@ contract Create3FactoryForkTest is Test {
         ICreate3FactoryAdmin(address(proxy)).extractERC20(TEST_ERC20_TOKEN);
 
         // Post-action assertions
-        assertEq(
-            IERC20(TEST_ERC20_TOKEN).balanceOf(address(proxy)),
-            0,
-            "Equivalence Violation: address(proxy) TEST_ERC20_TOKEN balance and 0."
-        );
+        assertEq(IERC20(TEST_ERC20_TOKEN).balanceOf(address(proxy)), 0, "Equivalence Violation: ERC20 balance != 0");
         assertEq(
             IERC20(TEST_ERC20_TOKEN).balanceOf(CONTRACT_DEPLOYER),
             amount,
-            "Equivalence Violation: CONTRACT_DEPLOYER TEST_ERC20_TOKEN balance and amount."
+            "Equivalence Violation: ERC20 balance != amount"
         );
     }
 
