@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
 
-interface IPredictiveDeployer {
+interface ICreate2Factory {
     function userNonces(address _principal, bytes32 _hashedBytecode) external returns (uint256);
     function getDeploymentHistory(address _principal) external returns (address[] memory);
     function getTransactionHash(address _principal, bytes memory _bytecode, uint256 _nonce)

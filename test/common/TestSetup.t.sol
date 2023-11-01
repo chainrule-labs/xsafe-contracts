@@ -2,14 +2,14 @@
 pragma solidity ^0.8.21;
 
 import { Test } from "forge-std/Test.sol";
-import { IPredictiveDeployer } from "../../src/interfaces/IPredictiveDeployer.sol";
-import { PredictiveDeployer } from "../../src/PredictiveDeployer.sol";
+import { ICreate2Factory } from "../../src/interfaces/ICreate2Factory.sol";
+import { Create2Factory } from "../../src/Create2Factory.sol";
 import { ERC1967Proxy } from "../../src/dependencies/proxy/ERC1967Proxy.sol";
 import { ChildA, ChildB } from "./Child.t.sol";
 import { CONTRACT_DEPLOYER } from "./../common/Constants.t.sol";
 
 abstract contract TestSetup is Test {
-    PredictiveDeployer public implementation;
+    Create2Factory public implementation;
     ERC1967Proxy public proxy;
     ChildA public childA;
     ChildB public childB;
@@ -22,7 +22,7 @@ abstract contract TestSetup is Test {
     event Deploy(address indexed sender, address indexed childA, bytes32 hashedBytecode, uint256 nonce);
 
     function setUp() public {
-        implementation = new PredictiveDeployer();
+        implementation = new Create2Factory();
         vm.prank(CONTRACT_DEPLOYER);
         proxy = new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize()"));
         childA = new ChildA(address(this));

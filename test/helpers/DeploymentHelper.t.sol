@@ -3,7 +3,7 @@ pragma solidity ^0.8.21;
 
 import { Test } from "forge-std/Test.sol";
 import { VmSafe } from "forge-std/Vm.sol";
-import { IPredictiveDeployer } from "../../src/interfaces/IPredictiveDeployer.sol";
+import { ICreate2Factory } from "../../src/interfaces/ICreate2Factory.sol";
 
 abstract contract DeploymentHelper is Test {
     /**
@@ -16,11 +16,11 @@ abstract contract DeploymentHelper is Test {
         internal
         returns (address)
     {
-        uint256 currentNonce = IPredictiveDeployer(_contract).userNonces(_wallet.addr, keccak256(_bytecode));
-        bytes32 txHash = IPredictiveDeployer(_contract).getTransactionHash(_wallet.addr, _bytecode, currentNonce);
+        uint256 currentNonce = ICreate2Factory(_contract).userNonces(_wallet.addr, keccak256(_bytecode));
+        bytes32 txHash = ICreate2Factory(_contract).getTransactionHash(_wallet.addr, _bytecode, currentNonce);
         bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", txHash));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(_wallet.privateKey, messageHash);
         bytes memory signature = abi.encodePacked(r, s, v);
-        return IPredictiveDeployer(_contract).deploy(_wallet.addr, signature, _bytecode);
+        return ICreate2Factory(_contract).deploy(_wallet.addr, signature, _bytecode);
     }
 }
