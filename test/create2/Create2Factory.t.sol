@@ -2,13 +2,13 @@
 pragma solidity ^0.8.21;
 
 import { VmSafe } from "forge-std/Vm.sol";
-import { Create2Factory } from "../src/Create2Factory.sol";
-import { ERC1967Proxy } from "../src/dependencies/proxy/ERC1967Proxy.sol";
-import { ICreate2Factory } from "../src/interfaces/ICreate2Factory.sol";
+import { Create2Factory } from "../../src/create2/Create2Factory.sol";
+import { ERC1967Proxy } from "../../src/dependencies/proxy/ERC1967Proxy.sol";
+import { ICreate2Factory } from "../../src/create2/interfaces/ICreate2Factory.sol";
 import { TestSetup } from "./common/TestSetup.t.sol";
-import { AddressLib } from "./helpers/libraries/AddressLib.t.sol";
+import { AddressLib } from "../common/libraries/AddressLib.t.sol";
 import { DeploymentHelper } from "./helpers/DeploymentHelper.t.sol";
-import { CONTRACT_DEPLOYER } from "./common/Constants.t.sol";
+import { CONTRACT_DEPLOYER } from "../common/Constants.t.sol";
 
 contract Create2FactoryTest is DeploymentHelper, TestSetup {
     /* solhint-disable func-name-mixedcase */

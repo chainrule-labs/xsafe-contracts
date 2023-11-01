@@ -3,7 +3,7 @@ pragma solidity ^0.8.21;
 
 import { Test } from "forge-std/Test.sol";
 import { VmSafe } from "forge-std/Vm.sol";
-import { ICreate2Factory } from "../../src/interfaces/ICreate2Factory.sol";
+import { ICreate2Factory } from "../../../src/create2/interfaces/ICreate2Factory.sol";
 
 abstract contract DeploymentHelper is Test {
     /**

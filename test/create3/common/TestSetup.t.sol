@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.21;
 
+// TODO: Address this
 import { Test } from "forge-std/Test.sol";
-import { ICreate2Factory } from "../../src/interfaces/ICreate2Factory.sol";
-import { Create2Factory } from "../../src/Create2Factory.sol";
-import { ERC1967Proxy } from "../../src/dependencies/proxy/ERC1967Proxy.sol";
-import { ChildA, ChildB } from "./Child.t.sol";
-import { CONTRACT_DEPLOYER } from "./../common/Constants.t.sol";
+import { ICreate2Factory } from "../../../src/create2/interfaces/ICreate2Factory.sol";
+import { Create2Factory } from "../../../src/create2/Create2Factory.sol";
+import { ERC1967Proxy } from "../../../src/dependencies/proxy/ERC1967Proxy.sol";
+import { ChildA, ChildB } from "../../common/Child.t.sol";
+import { CONTRACT_DEPLOYER } from "../../common/Constants.t.sol";
 
 abstract contract TestSetup is Test {
     Create2Factory public implementation;
