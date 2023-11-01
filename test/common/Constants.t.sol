@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
 
 address constant CONTRACT_DEPLOYER = 0x3790e085cD4FC7a12270DaEedc5c208aFc35bB0F;
