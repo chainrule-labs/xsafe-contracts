@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
 
-import { IPredictiveDeployer } from "./IPredictiveDeployer.sol";
+import { ICreate2Factory } from "./ICreate2Factory.sol";
 
-interface IPredictiveDeployerAdmin is IPredictiveDeployer {
+interface ICreate2FactoryAdmin is ICreate2Factory {
     error UUPSUnauthorizedCallContext();
 
     function upgradeToAndCall(address newImplementation, bytes memory data) external;

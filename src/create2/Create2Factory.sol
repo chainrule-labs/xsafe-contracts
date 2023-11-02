@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
 
-import { ECDSA } from "./dependencies/cryptography/ECDSA.sol";
+import { ECDSA } from "../dependencies/cryptography/ECDSA.sol";
 import { SafeTransferLib, ERC20 } from "solmate/utils/SafeTransferLib.sol";
-import { Initializable } from "./dependencies/proxy/utils/Initializable.sol";
-import { UUPSUpgradeable } from "./dependencies/proxy/utils/UUPSUpgradeable.sol";
-import { Ownable } from "./dependencies/access/Ownable.sol";
-import { IERC20 } from "./dependencies/token/interfaces/IERC20.sol";
+import { Initializable } from "../dependencies/proxy/utils/Initializable.sol";
+import { UUPSUpgradeable } from "../dependencies/proxy/utils/UUPSUpgradeable.sol";
+import { Ownable } from "../dependencies/access/Ownable.sol";
+import { IERC20 } from "../dependencies/token/interfaces/IERC20.sol";
 
-contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
+contract Create2Factory is Initializable, UUPSUpgradeable, Ownable {
     // Private Constants: no SLOAD to save users gas
     address private constant CONTRACT_DEPLOYER = 0x3790e085cD4FC7a12270DaEedc5c208aFc35bB0F; // TODO: Update
 
@@ -39,7 +39,7 @@ contract PredictiveDeployer is Initializable, UUPSUpgradeable, Ownable {
         return keccak256(
             abi.encode(
                 keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-                keccak256("PredictiveDeployer"),
+                keccak256("Create2Factory"),
                 keccak256("1"), // Tracks contract upgrades
                 block.chainid,
                 address(this)

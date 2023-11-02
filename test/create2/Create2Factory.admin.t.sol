@@ -1,15 +1,15 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
 
 import { Test } from "forge-std/Test.sol";
-import { PredictiveDeployer } from "../src/PredictiveDeployer.sol";
-import { ERC1967Proxy } from "../src/dependencies/proxy/ERC1967Proxy.sol";
-import { IERC20 } from "../src/dependencies/token/interfaces/IERC20.sol";
-import { IPredictiveDeployerAdmin } from "../src/interfaces/IPredictiveDeployerAdmin.sol";
+import { Create2Factory } from "../../src/create2/Create2Factory.sol";
+import { ERC1967Proxy } from "../../src/dependencies/proxy/ERC1967Proxy.sol";
+import { IERC20 } from "../../src/dependencies/token/interfaces/IERC20.sol";
+import { ICreate2FactoryAdmin } from "../../src/create2/interfaces/ICreate2FactoryAdmin.sol";
 import { TestSetup } from "./common/TestSetup.t.sol";
-import { CONTRACT_DEPLOYER, TEST_ERC20_TOKEN } from "./common/Constants.t.sol";
+import { CONTRACT_DEPLOYER, TEST_ERC20_TOKEN } from "../common/Constants.t.sol";
 
-contract PredictiveDeployerTest is TestSetup {
+contract Create2FactoryTest is TestSetup {
     /* solhint-disable func-name-mixedcase */
 
     function test_ExtractNative(uint256 amount) public {
@@ -23,7 +23,7 @@ contract PredictiveDeployerTest is TestSetup {
 
         // Act
         vm.prank(CONTRACT_DEPLOYER);
-        IPredictiveDeployerAdmin(address(proxy)).extractNative();
+        ICreate2FactoryAdmin(address(proxy)).extractNative();
 
         assertEq(CONTRACT_DEPLOYER.balance, preLocalBalance + amount);
     }
@@ -36,14 +36,14 @@ contract PredictiveDeployerTest is TestSetup {
 
         // Act
         vm.prank(invalidExtractor);
-        IPredictiveDeployerAdmin(address(proxy)).extractNative();
+        ICreate2FactoryAdmin(address(proxy)).extractNative();
     }
 }
 
-contract PredictiveDeployerForkTest is Test {
+contract Create2FactoryForkTest is Test {
     /* solhint-disable func-name-mixedcase */
 
-    PredictiveDeployer public implementation;
+    Create2Factory public implementation;
     ERC1967Proxy public proxy;
     uint256 public mainnetFork;
 
@@ -53,7 +53,7 @@ contract PredictiveDeployerForkTest is Test {
         vm.selectFork(mainnetFork);
 
         // Instantiate contracts
-        implementation = new PredictiveDeployer();
+        implementation = new Create2Factory();
         vm.prank(CONTRACT_DEPLOYER);
         proxy = new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize()"));
     }
@@ -74,7 +74,7 @@ contract PredictiveDeployerForkTest is Test {
 
         // Act
         vm.prank(CONTRACT_DEPLOYER);
-        IPredictiveDeployerAdmin(address(proxy)).extractERC20(TEST_ERC20_TOKEN);
+        ICreate2FactoryAdmin(address(proxy)).extractERC20(TEST_ERC20_TOKEN);
 
         // Post-action assertions
         assertEq(IERC20(TEST_ERC20_TOKEN).balanceOf(address(proxy)), 0);
@@ -91,6 +91,6 @@ contract PredictiveDeployerForkTest is Test {
 
         // Act
         vm.prank(invalidExtractor);
-        IPredictiveDeployerAdmin(address(proxy)).extractERC20(TEST_ERC20_TOKEN);
+        ICreate2FactoryAdmin(address(proxy)).extractERC20(TEST_ERC20_TOKEN);
     }
 }
