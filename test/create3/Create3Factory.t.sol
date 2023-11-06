@@ -135,6 +135,8 @@ contract Create3FactoryTest is DeploymentHelper, TestSetup {
     function testFuzz_DeployBytecodeVarianceIndependence(uint256 pkNum) public {
         // Setup
         VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pkNum)))));
+        assertTrue(wallet.addr != CONTRACT_DEPLOYER, "Truth Violation: wallet.addr != CONTRACT_DEPLOYER");
+
         bytes memory constructorArgsBytecode1 = abi.encode(wallet.addr);
         bytes memory constructorArgsBytecode2 = abi.encode(CONTRACT_DEPLOYER);
 
