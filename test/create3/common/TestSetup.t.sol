@@ -12,6 +12,7 @@ abstract contract TestSetup is Test {
     Create3Factory public implementation;
     ERC1967Proxy public proxy;
     ChildA public childA;
+    ChildA public childAVariant;
     ChildB public childB;
     bytes public strippedBytecodeChildA;
     bytes public strippedBytecodeChildB;
@@ -32,6 +33,7 @@ abstract contract TestSetup is Test {
         vm.prank(CONTRACT_DEPLOYER);
         proxy = new ERC1967Proxy(address(implementation), abi.encodeWithSignature("initialize()"));
         childA = new ChildA(address(this));
+        childAVariant = new ChildA(CONTRACT_DEPLOYER); // different constructor args
         childB = new ChildB();
 
         strippedBytecodeChildA = type(ChildA).creationCode;

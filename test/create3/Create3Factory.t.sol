@@ -8,6 +8,7 @@ import { ICreate3Factory } from "../../src/create3/interfaces/ICreate3Factory.so
 import { TestSetup } from "./common/TestSetup.t.sol";
 import { AddressLib } from "../common/libraries/AddressLib.t.sol";
 import { DeploymentHelper } from "./helpers/DeploymentHelper.t.sol";
+import { CONTRACT_DEPLOYER } from "../common/Constants.t.sol";
 
 contract Create3FactoryTest is DeploymentHelper, TestSetup {
     /* solhint-disable func-name-mixedcase */
@@ -82,12 +83,13 @@ contract Create3FactoryTest is DeploymentHelper, TestSetup {
     function testFuzz_DeployTwice(uint256 pkNum) public {
         // Setup
         VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pkNum)))));
+        bytes memory constructorArgsBytecode = abi.encode(wallet.addr);
 
         // First Deployment
-        deployChild(address(proxy), wallet, strippedBytecodeChildA);
+        deployChild(address(proxy), wallet, strippedBytecodeChildA, constructorArgsBytecode);
 
         // Second Deployment
-        deployChild(address(proxy), wallet, strippedBytecodeChildA);
+        deployChild(address(proxy), wallet, strippedBytecodeChildA, constructorArgsBytecode);
 
         // Fetch Deployment History
         address[] memory deployementHistory = ICreate3Factory(address(proxy)).getDeploymentHistory(wallet.addr);
@@ -105,11 +107,12 @@ contract Create3FactoryTest is DeploymentHelper, TestSetup {
     function testFuzz_DeployOrderIndependence(uint256 pkNum) public {
         // Setup
         VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pkNum)))));
+        bytes memory constructorArgsBytecode = abi.encode(wallet.addr);
 
         // First deployment set
         uint256 snapShot = vm.snapshot();
-        deployChild(address(proxy), wallet, strippedBytecodeChildA);
-        deployChild(address(proxy), wallet, strippedBytecodeChildB);
+        deployChild(address(proxy), wallet, strippedBytecodeChildA, constructorArgsBytecode);
+        deployChild(address(proxy), wallet, strippedBytecodeChildB, "");
         address[] memory setOneDeployementHistory = ICreate3Factory(address(proxy)).getDeploymentHistory(wallet.addr);
         address setOneChildA = setOneDeployementHistory[0];
         address setOneChildB = setOneDeployementHistory[1];
@@ -118,8 +121,8 @@ contract Create3FactoryTest is DeploymentHelper, TestSetup {
         vm.revertTo(snapShot);
 
         // Second deployment set (reverse order)
-        deployChild(address(proxy), wallet, strippedBytecodeChildB);
-        deployChild(address(proxy), wallet, strippedBytecodeChildA);
+        deployChild(address(proxy), wallet, strippedBytecodeChildB, "");
+        deployChild(address(proxy), wallet, strippedBytecodeChildA, constructorArgsBytecode);
         address[] memory setTwoDeployementHistory = ICreate3Factory(address(proxy)).getDeploymentHistory(wallet.addr);
         address setTwoChildB = setTwoDeployementHistory[0];
         address setTwoChildA = setTwoDeployementHistory[1];
@@ -129,13 +132,38 @@ contract Create3FactoryTest is DeploymentHelper, TestSetup {
         assertEq(setOneChildB, setTwoChildB, "Equivalence violation: setOneChildB != setTwoChildB");
     }
 
+    function testFuzz_DeployBytecodeVarianceIndependence(uint256 pkNum) public {
+        // Setup
+        VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pkNum)))));
+        bytes memory constructorArgsBytecode1 = abi.encode(wallet.addr);
+        bytes memory constructorArgsBytecode2 = abi.encode(CONTRACT_DEPLOYER);
+
+        // First deployment
+        uint256 snapShot = vm.snapshot();
+        deployChild(address(proxy), wallet, strippedBytecodeChildA, constructorArgsBytecode1);
+        address[] memory setOneDeployementHistory = ICreate3Factory(address(proxy)).getDeploymentHistory(wallet.addr);
+        address childOne = setOneDeployementHistory[0];
+
+        // Set chain state to what it was before first deployment
+        vm.revertTo(snapShot);
+
+        // Second deployment (different constructor args)
+        deployChild(address(proxy), wallet, strippedBytecodeChildA, constructorArgsBytecode2);
+        address[] memory setTwoDeployementHistory = ICreate3Factory(address(proxy)).getDeploymentHistory(wallet.addr);
+        address childTwo = setTwoDeployementHistory[0];
+
+        // Assertions
+        assertEq(childOne, childTwo, "Equivalence violation: childOne != childTwo");
+    }
+
     function testFuzz_DeployNonceUpdate(uint256 pkNum) public {
         // Setup
         VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encode(uint256(pkNum)))));
+        bytes memory constructorArgsBytecode = abi.encode(wallet.addr);
         uint256 preDeployNonce = ICreate3Factory(address(proxy)).userNonces(wallet.addr, hashedStrippedBytecodeChildA);
 
         // Act
-        deployChild(address(proxy), wallet, strippedBytecodeChildA);
+        deployChild(address(proxy), wallet, strippedBytecodeChildA, constructorArgsBytecode);
         uint256 postDeployNonce = ICreate3Factory(address(proxy)).userNonces(wallet.addr, hashedStrippedBytecodeChildA);
 
         // Assertions
@@ -145,7 +173,7 @@ contract Create3FactoryTest is DeploymentHelper, TestSetup {
     function testFuzz_DeployHistoryUpdate(uint256 pkNum) public {
         // Setup
         VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pkNum)))));
-
+        bytes memory constructorArgsBytecode = abi.encode(wallet.addr);
         address[] memory deploymentHistory = ICreate3Factory(address(proxy)).getDeploymentHistory(wallet.addr);
 
         // Pre-act assertions
@@ -155,7 +183,7 @@ contract Create3FactoryTest is DeploymentHelper, TestSetup {
         address child1 = ICreate3Factory(address(proxy)).getAddress(wallet.addr, strippedBytecodeChildA);
 
         // Act 1
-        deployChild(address(proxy), wallet, strippedBytecodeChildA);
+        deployChild(address(proxy), wallet, strippedBytecodeChildA, constructorArgsBytecode);
         deploymentHistory = ICreate3Factory(address(proxy)).getDeploymentHistory(wallet.addr);
 
         // Assertions 1
@@ -166,7 +194,7 @@ contract Create3FactoryTest is DeploymentHelper, TestSetup {
         address child2 = ICreate3Factory(address(proxy)).getAddress(wallet.addr, strippedBytecodeChildA);
 
         // Act 2
-        deployChild(address(proxy), wallet, strippedBytecodeChildA);
+        deployChild(address(proxy), wallet, strippedBytecodeChildA, constructorArgsBytecode);
         deploymentHistory = ICreate3Factory(address(proxy)).getDeploymentHistory(wallet.addr);
 
         // Assertions 2
