@@ -6,8 +6,8 @@ import { Create2Factory } from "../../src/create2/Create2Factory.sol";
 import { ERC1967Proxy } from "../../src/dependencies/proxy/ERC1967Proxy.sol";
 import { IERC20 } from "../../src/dependencies/token/interfaces/IERC20.sol";
 import { ICreate2FactoryAdmin } from "../../src/create2/interfaces/ICreate2FactoryAdmin.sol";
-import { TestSetup } from "./common/TestSetup.t.sol";
-import { CONTRACT_DEPLOYER, TEST_ERC20_TOKEN } from "../common/Constants.t.sol";
+import { TestSetup } from "./common/contracts/TestSetup.t.sol";
+import { CONTRACT_DEPLOYER, TEST_ERC20_TOKEN } from "./common/Constants.t.sol";
 
 contract Create2FactoryTest is TestSetup {
     /* solhint-disable func-name-mixedcase */

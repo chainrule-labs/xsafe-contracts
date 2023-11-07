@@ -5,10 +5,10 @@ import { VmSafe } from "forge-std/Vm.sol";
 import { Create2Factory } from "../../src/create2/Create2Factory.sol";
 import { ERC1967Proxy } from "../../src/dependencies/proxy/ERC1967Proxy.sol";
 import { ICreate2Factory } from "../../src/create2/interfaces/ICreate2Factory.sol";
-import { TestSetup } from "./common/TestSetup.t.sol";
-import { AddressLib } from "../common/libraries/AddressLib.t.sol";
+import { TestSetup } from "./common/contracts/TestSetup.t.sol";
+import { AddressLib } from "./common/libraries/AddressLib.t.sol";
 import { DeploymentHelper } from "./helpers/DeploymentHelper.t.sol";
-import { CONTRACT_DEPLOYER } from "../common/Constants.t.sol";
+import { CONTRACT_DEPLOYER } from "./common/Constants.t.sol";
 
 contract Create2FactoryTest is DeploymentHelper, TestSetup {
     /* solhint-disable func-name-mixedcase */
@@ -19,10 +19,11 @@ contract Create2FactoryTest is DeploymentHelper, TestSetup {
         // Setup
         VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pkNum)))));
 
-        uint256 currentNonce = ICreate2Factory(address(proxy)).userNonces(wallet.addr, hashedBytecodeChildA);
+        uint256 currentNonce = ICreate2Factory(address(proxy)).userNonces(wallet.addr, hashedBytecodeChildWithArgs);
 
         // Get signature information
-        bytes32 txHash = ICreate2Factory(address(proxy)).getTransactionHash(wallet.addr, bytecodeChildA, currentNonce);
+        bytes32 txHash =
+            ICreate2Factory(address(proxy)).getTransactionHash(wallet.addr, bytecodeChildWithArgs, currentNonce);
 
         bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", txHash));
 
@@ -33,13 +34,13 @@ contract Create2FactoryTest is DeploymentHelper, TestSetup {
         // Expectation
         vm.startPrank(sender);
         uint256 snapShot = vm.snapshot();
-        address expectedChild = ICreate2Factory(address(proxy)).deploy(wallet.addr, signature, bytecodeChildA);
+        address expectedChild = ICreate2Factory(address(proxy)).deploy(wallet.addr, signature, bytecodeChildWithArgs);
 
         // Set chain state to what it was before the deployment
         vm.revertTo(snapShot);
 
         // Act
-        address actualChild = ICreate2Factory(address(proxy)).getAddress(wallet.addr, bytecodeChildA);
+        address actualChild = ICreate2Factory(address(proxy)).getAddress(wallet.addr, bytecodeChildWithArgs);
         vm.stopPrank();
 
         // Assertions
@@ -50,10 +51,11 @@ contract Create2FactoryTest is DeploymentHelper, TestSetup {
         // Setup
         VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pkNum)))));
 
-        uint256 preDeployNonce = ICreate2Factory(address(proxy)).userNonces(wallet.addr, hashedBytecodeChildA);
+        uint256 preDeployNonce = ICreate2Factory(address(proxy)).userNonces(wallet.addr, hashedBytecodeChildWithArgs);
 
         // Get signature information
-        bytes32 txHash = ICreate2Factory(address(proxy)).getTransactionHash(wallet.addr, bytecodeChildA, preDeployNonce);
+        bytes32 txHash =
+            ICreate2Factory(address(proxy)).getTransactionHash(wallet.addr, bytecodeChildWithArgs, preDeployNonce);
 
         bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", txHash));
 
@@ -62,12 +64,12 @@ contract Create2FactoryTest is DeploymentHelper, TestSetup {
 
         // Expectations
         vm.startPrank(sender);
-        address expectedChild = ICreate2Factory(address(proxy)).getAddress(wallet.addr, bytecodeChildA);
+        address expectedChild = ICreate2Factory(address(proxy)).getAddress(wallet.addr, bytecodeChildWithArgs);
         vm.expectEmit(true, true, true, true, address(proxy));
-        emit Deploy(wallet.addr, expectedChild, keccak256(bytecodeChildA), preDeployNonce);
+        emit Deploy(wallet.addr, expectedChild, keccak256(bytecodeChildWithArgs), preDeployNonce);
 
         // Act
-        address actualChild = ICreate2Factory(address(proxy)).deploy(wallet.addr, signature, bytecodeChildA);
+        address actualChild = ICreate2Factory(address(proxy)).deploy(wallet.addr, signature, bytecodeChildWithArgs);
         vm.stopPrank();
 
         // Assertions
@@ -79,10 +81,10 @@ contract Create2FactoryTest is DeploymentHelper, TestSetup {
         VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pkNum)))));
 
         // First Deployment
-        address actualChild1 = deployChild(address(proxy), wallet, bytecodeChildA);
+        address actualChild1 = deployChild(address(proxy), wallet, bytecodeChildWithArgs);
 
         // Second Deployment
-        address actualChild2 = deployChild(address(proxy), wallet, bytecodeChildA);
+        address actualChild2 = deployChild(address(proxy), wallet, bytecodeChildWithArgs);
 
         // Assertions
         assertTrue(actualChild1 != address(0) && actualChild2 != address(0));
@@ -95,15 +97,15 @@ contract Create2FactoryTest is DeploymentHelper, TestSetup {
 
         // First deployment set
         uint256 snapShot = vm.snapshot();
-        address setOneChildA = deployChild(address(proxy), wallet, bytecodeChildA);
-        address setOneChildB = deployChild(address(proxy), wallet, bytecodeChildB);
+        address setOneChildA = deployChild(address(proxy), wallet, bytecodeChildWithArgs);
+        address setOneChildB = deployChild(address(proxy), wallet, bytecodeChildNoArgs);
 
         // Set chain state to what it was before first deployment set
         vm.revertTo(snapShot);
 
         // Second deployment set (reverse order)
-        address setTwoChildB = deployChild(address(proxy), wallet, bytecodeChildB);
-        address setTwoChildA = deployChild(address(proxy), wallet, bytecodeChildA);
+        address setTwoChildB = deployChild(address(proxy), wallet, bytecodeChildNoArgs);
+        address setTwoChildA = deployChild(address(proxy), wallet, bytecodeChildWithArgs);
 
         // Assertions
         assertEq(setOneChildA, setTwoChildA);
@@ -113,11 +115,11 @@ contract Create2FactoryTest is DeploymentHelper, TestSetup {
     function testFuzz_DeployNonceUpdate(uint256 pkNum) public {
         // Setup
         VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pkNum)))));
-        uint256 preDeployNonce = ICreate2Factory(address(proxy)).userNonces(wallet.addr, hashedBytecodeChildA);
+        uint256 preDeployNonce = ICreate2Factory(address(proxy)).userNonces(wallet.addr, hashedBytecodeChildWithArgs);
 
         // Act
-        deployChild(address(proxy), wallet, bytecodeChildA);
-        uint256 postDeployNonce = ICreate2Factory(address(proxy)).userNonces(wallet.addr, hashedBytecodeChildA);
+        deployChild(address(proxy), wallet, bytecodeChildWithArgs);
+        uint256 postDeployNonce = ICreate2Factory(address(proxy)).userNonces(wallet.addr, hashedBytecodeChildWithArgs);
 
         // Assertions
         assertEq(postDeployNonce, preDeployNonce + 1);
@@ -133,14 +135,14 @@ contract Create2FactoryTest is DeploymentHelper, TestSetup {
         assertEq(deploymentHistory.length, 0);
 
         // Act
-        address child1 = deployChild(address(proxy), wallet, bytecodeChildA);
+        address child1 = deployChild(address(proxy), wallet, bytecodeChildWithArgs);
         deploymentHistory = ICreate2Factory(address(proxy)).getDeploymentHistory(wallet.addr);
 
         // Assertions
         assertEq(deploymentHistory.length, 1);
         assertTrue(deploymentHistory.includes(child1));
 
-        address child2 = deployChild(address(proxy), wallet, bytecodeChildA);
+        address child2 = deployChild(address(proxy), wallet, bytecodeChildWithArgs);
         deploymentHistory = ICreate2Factory(address(proxy)).getDeploymentHistory(wallet.addr);
 
         // Assertions
@@ -152,10 +154,11 @@ contract Create2FactoryTest is DeploymentHelper, TestSetup {
         // Setup
         VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pkNum)))));
 
-        uint256 currentNonce = ICreate2Factory(address(proxy)).userNonces(wallet.addr, hashedBytecodeChildA);
+        uint256 currentNonce = ICreate2Factory(address(proxy)).userNonces(wallet.addr, hashedBytecodeChildWithArgs);
 
         // Get signature information
-        bytes32 txHash = ICreate2Factory(address(proxy)).getTransactionHash(wallet.addr, bytecodeChildA, currentNonce);
+        bytes32 txHash =
+            ICreate2Factory(address(proxy)).getTransactionHash(wallet.addr, bytecodeChildWithArgs, currentNonce);
 
         bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", txHash));
 
@@ -163,11 +166,11 @@ contract Create2FactoryTest is DeploymentHelper, TestSetup {
         bytes memory signature = abi.encodePacked(r, s, v);
 
         // Deploy once
-        ICreate2Factory(address(proxy)).deploy(wallet.addr, signature, bytecodeChildA);
+        ICreate2Factory(address(proxy)).deploy(wallet.addr, signature, bytecodeChildWithArgs);
 
         // Act: attempt replay
         vm.expectRevert(Create2Factory.Unauthorized.selector);
-        ICreate2Factory(address(proxy)).deploy(wallet.addr, signature, bytecodeChildA);
+        ICreate2Factory(address(proxy)).deploy(wallet.addr, signature, bytecodeChildWithArgs);
     }
 
     function testFuzz_CannotDeployWithoutApproval(uint256 pkNum, address invalidPrincipal) public {
@@ -177,10 +180,11 @@ contract Create2FactoryTest is DeploymentHelper, TestSetup {
         // Failing condition: principal is not the signer
         vm.assume(invalidPrincipal != wallet.addr);
 
-        uint256 currentNonce = ICreate2Factory(address(proxy)).userNonces(wallet.addr, hashedBytecodeChildA);
+        uint256 currentNonce = ICreate2Factory(address(proxy)).userNonces(wallet.addr, hashedBytecodeChildWithArgs);
 
         // Get signature information
-        bytes32 txHash = ICreate2Factory(address(proxy)).getTransactionHash(wallet.addr, bytecodeChildA, currentNonce);
+        bytes32 txHash =
+            ICreate2Factory(address(proxy)).getTransactionHash(wallet.addr, bytecodeChildWithArgs, currentNonce);
 
         bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", txHash));
 
@@ -189,7 +193,7 @@ contract Create2FactoryTest is DeploymentHelper, TestSetup {
 
         // Act: attempt with invalid principal
         vm.expectRevert(Create2Factory.Unauthorized.selector);
-        ICreate2Factory(address(proxy)).deploy(invalidPrincipal, signature, bytecodeChildA);
+        ICreate2Factory(address(proxy)).deploy(invalidPrincipal, signature, bytecodeChildWithArgs);
     }
 
     function testFuzz_GetBytecodeHash(bytes memory _childBytecode) public {

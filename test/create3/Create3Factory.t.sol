@@ -5,11 +5,12 @@ import { VmSafe } from "forge-std/Vm.sol";
 import { Create3Factory } from "../../src/create3/Create3Factory.sol";
 import { ERC1967Proxy } from "../../src/dependencies/proxy/ERC1967Proxy.sol";
 import { ICreate3Factory } from "../../src/create3/interfaces/ICreate3Factory.sol";
-import { TestSetup } from "./common/TestSetup.t.sol";
-import { AddressLib } from "../common/libraries/AddressLib.t.sol";
+import { TestSetup, ChildrenWithConstructorArgs } from "./common/contracts/TestSetup.t.sol";
+import { AddressLib } from "./common/libraries/AddressLib.t.sol";
 import { DeploymentHelper } from "./helpers/DeploymentHelper.t.sol";
+import { CONTRACT_DEPLOYER } from "./common/Constants.t.sol";
 
-contract Create3FactoryTest is DeploymentHelper, TestSetup {
+contract Create3FactoryTest is TestSetup, DeploymentHelper {
     /* solhint-disable func-name-mixedcase */
 
     using AddressLib for address[];
@@ -18,26 +19,21 @@ contract Create3FactoryTest is DeploymentHelper, TestSetup {
         // Setup
         VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pkNum)))));
 
-        // Get signature information
-        bytes32 txHash = ICreate3Factory(address(proxy)).getTransactionHash(wallet.addr, strippedBytecodeChildA);
+        (bytes memory creationCode, bytes memory constructorArgsCode) = getDeploymentBytecode();
 
-        bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", txHash));
-
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(wallet.privateKey, messageHash);
-
-        bytes memory signature = abi.encodePacked(r, s, v);
+        bytes memory signature = getSignature(address(proxy), wallet, creationCode);
 
         // Expectation
         vm.startPrank(sender);
         uint256 snapShot = vm.snapshot();
-        ICreate3Factory(address(proxy)).deploy(wallet.addr, signature, strippedBytecodeChildA, abi.encode(wallet.addr));
+        ICreate3Factory(address(proxy)).deploy(wallet.addr, signature, creationCode, constructorArgsCode);
         address expectedChild = ICreate3Factory(address(proxy)).getDeploymentHistory(wallet.addr)[0];
 
         // Set chain state to what it was before the deployment
         vm.revertTo(snapShot);
 
         // Act
-        address actualChild = ICreate3Factory(address(proxy)).getAddress(wallet.addr, strippedBytecodeChildA);
+        address actualChild = ICreate3Factory(address(proxy)).getAddress(wallet.addr, creationCode);
         vm.stopPrank();
 
         // Assertions
@@ -47,30 +43,20 @@ contract Create3FactoryTest is DeploymentHelper, TestSetup {
     function testFuzz_Deploy(uint256 pkNum, address sender) public {
         // Setup
         VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pkNum)))));
-        bytes memory constructorArgsBytecodeChildA = abi.encode(wallet.addr);
 
-        uint256 preDeployNonce = ICreate3Factory(address(proxy)).userNonces(wallet.addr, hashedStrippedBytecodeChildA);
+        (bytes memory creationCode, bytes memory constructorArgsCode) = getDeploymentBytecode();
 
-        // Get signature information
-        bytes32 txHash = ICreate3Factory(address(proxy)).getTransactionHash(wallet.addr, strippedBytecodeChildA);
-
-        bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", txHash));
-
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(wallet.privateKey, messageHash);
-        bytes memory signature = abi.encodePacked(r, s, v);
+        bytes memory signature = getSignature(address(proxy), wallet, creationCode);
 
         // Expectations
         vm.startPrank(sender);
-        address expectedChild = ICreate3Factory(address(proxy)).getAddress(wallet.addr, strippedBytecodeChildA);
+        uint256 preDeployNonce = ICreate3Factory(address(proxy)).userNonces(wallet.addr, keccak256(creationCode));
+        address expectedChild = ICreate3Factory(address(proxy)).getAddress(wallet.addr, creationCode);
         vm.expectEmit(true, true, true, true, address(proxy));
-        emit Deploy(
-            wallet.addr, expectedChild, keccak256(strippedBytecodeChildA), constructorArgsBytecodeChildA, preDeployNonce
-        );
+        emit Deploy(wallet.addr, expectedChild, keccak256(creationCode), constructorArgsCode, preDeployNonce);
 
         // Act
-        ICreate3Factory(address(proxy)).deploy(
-            wallet.addr, signature, strippedBytecodeChildA, constructorArgsBytecodeChildA
-        );
+        ICreate3Factory(address(proxy)).deploy(wallet.addr, signature, creationCode, constructorArgsCode);
         address actualChild = ICreate3Factory(address(proxy)).getDeploymentHistory(wallet.addr)[0];
 
         vm.stopPrank();
@@ -83,11 +69,13 @@ contract Create3FactoryTest is DeploymentHelper, TestSetup {
         // Setup
         VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pkNum)))));
 
+        (bytes memory creationCode, bytes memory constructorArgsCode) = getDeploymentBytecode();
+
         // First Deployment
-        deployChild(address(proxy), wallet, strippedBytecodeChildA);
+        deployChild(address(proxy), wallet, creationCode, constructorArgsCode);
 
         // Second Deployment
-        deployChild(address(proxy), wallet, strippedBytecodeChildA);
+        deployChild(address(proxy), wallet, creationCode, constructorArgsCode);
 
         // Fetch Deployment History
         address[] memory deployementHistory = ICreate3Factory(address(proxy)).getDeploymentHistory(wallet.addr);
@@ -106,37 +94,79 @@ contract Create3FactoryTest is DeploymentHelper, TestSetup {
         // Setup
         VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pkNum)))));
 
+        (bytes memory creationCode, bytes memory constructorArgsCode) = getDeploymentBytecode();
+
         // First deployment set
         uint256 snapShot = vm.snapshot();
-        deployChild(address(proxy), wallet, strippedBytecodeChildA);
-        deployChild(address(proxy), wallet, strippedBytecodeChildB);
+        deployChild(address(proxy), wallet, creationCode, constructorArgsCode);
+        deployChild(address(proxy), wallet, noArgsChildCreationCode, "");
         address[] memory setOneDeployementHistory = ICreate3Factory(address(proxy)).getDeploymentHistory(wallet.addr);
-        address setOneChildA = setOneDeployementHistory[0];
-        address setOneChildB = setOneDeployementHistory[1];
+        address setOneChildWithArgs = setOneDeployementHistory[0];
+        address setOneChildWithoutArgs = setOneDeployementHistory[1];
 
         // Set chain state to what it was before first deployment set
         vm.revertTo(snapShot);
 
         // Second deployment set (reverse order)
-        deployChild(address(proxy), wallet, strippedBytecodeChildB);
-        deployChild(address(proxy), wallet, strippedBytecodeChildA);
+        deployChild(address(proxy), wallet, noArgsChildCreationCode, "");
+        deployChild(address(proxy), wallet, creationCode, constructorArgsCode);
         address[] memory setTwoDeployementHistory = ICreate3Factory(address(proxy)).getDeploymentHistory(wallet.addr);
-        address setTwoChildB = setTwoDeployementHistory[0];
-        address setTwoChildA = setTwoDeployementHistory[1];
+        address setTwoChildWithoutArgs = setTwoDeployementHistory[0];
+        address setTwoChildWithArgs = setTwoDeployementHistory[1];
 
         // Assertions
-        assertEq(setOneChildA, setTwoChildA, "Equivalence violation: setOneChildA != setTwoChildA");
-        assertEq(setOneChildB, setTwoChildB, "Equivalence violation: setOneChildB != setTwoChildB");
+        assertEq(
+            setOneChildWithArgs,
+            setTwoChildWithArgs,
+            "Equivalence violation: setOneChildWithArgs != setTwoChildWithArgs"
+        );
+        assertEq(
+            setOneChildWithoutArgs,
+            setTwoChildWithoutArgs,
+            "Equivalence violation: setOneChildWithoutArgs != setTwoChildWithoutArgs"
+        );
+    }
+
+    function testFuzz_DeployBytecodeVarianceIndependence(uint256 pkNum) public {
+        // Setup
+        VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pkNum)))));
+        assertTrue(wallet.addr != CONTRACT_DEPLOYER, "Truth Violation: wallet.addr != CONTRACT_DEPLOYER");
+
+        ChildrenWithConstructorArgs.ChildContractData[] memory childrenData =
+            childrenWithConstructorArgs.getChildrenData();
+
+        for (uint256 i = 0; i < childrenData.length; i++) {
+            // First deployment
+            uint256 snapShot = vm.snapshot();
+            deployChild(address(proxy), wallet, childrenData[i].creationCode, childrenData[i].constructorArgsCode1);
+            address[] memory setOneDeployementHistory =
+                ICreate3Factory(address(proxy)).getDeploymentHistory(wallet.addr);
+            address childOne = setOneDeployementHistory[0];
+
+            // Set chain state to what it was before first deployment
+            vm.revertTo(snapShot);
+
+            // Second deployment (different constructor args)
+            deployChild(address(proxy), wallet, childrenData[i].creationCode, childrenData[i].constructorArgsCode2);
+            address[] memory setTwoDeployementHistory =
+                ICreate3Factory(address(proxy)).getDeploymentHistory(wallet.addr);
+            address childTwo = setTwoDeployementHistory[0];
+
+            // Assertions
+            assertEq(childOne, childTwo, "Equivalence violation: childOne != childTwo");
+        }
     }
 
     function testFuzz_DeployNonceUpdate(uint256 pkNum) public {
         // Setup
-        VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encode(uint256(pkNum)))));
-        uint256 preDeployNonce = ICreate3Factory(address(proxy)).userNonces(wallet.addr, hashedStrippedBytecodeChildA);
+        VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pkNum)))));
+
+        (bytes memory creationCode, bytes memory constructorArgsCode) = getDeploymentBytecode();
+        uint256 preDeployNonce = ICreate3Factory(address(proxy)).userNonces(wallet.addr, keccak256(creationCode));
 
         // Act
-        deployChild(address(proxy), wallet, strippedBytecodeChildA);
-        uint256 postDeployNonce = ICreate3Factory(address(proxy)).userNonces(wallet.addr, hashedStrippedBytecodeChildA);
+        deployChild(address(proxy), wallet, creationCode, constructorArgsCode);
+        uint256 postDeployNonce = ICreate3Factory(address(proxy)).userNonces(wallet.addr, keccak256(creationCode));
 
         // Assertions
         assertEq(postDeployNonce, preDeployNonce + 1, "Equivalence violation: postDeployNonce != preDeployNonce + 1");
@@ -145,17 +175,17 @@ contract Create3FactoryTest is DeploymentHelper, TestSetup {
     function testFuzz_DeployHistoryUpdate(uint256 pkNum) public {
         // Setup
         VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pkNum)))));
-
+        (bytes memory creationCode, bytes memory constructorArgsCode) = getDeploymentBytecode();
         address[] memory deploymentHistory = ICreate3Factory(address(proxy)).getDeploymentHistory(wallet.addr);
 
         // Pre-act assertions
         assertEq(deploymentHistory.length, 0);
 
         // Expectation 1
-        address child1 = ICreate3Factory(address(proxy)).getAddress(wallet.addr, strippedBytecodeChildA);
+        address child1 = ICreate3Factory(address(proxy)).getAddress(wallet.addr, creationCode);
 
         // Act 1
-        deployChild(address(proxy), wallet, strippedBytecodeChildA);
+        deployChild(address(proxy), wallet, creationCode, constructorArgsCode);
         deploymentHistory = ICreate3Factory(address(proxy)).getDeploymentHistory(wallet.addr);
 
         // Assertions 1
@@ -163,10 +193,10 @@ contract Create3FactoryTest is DeploymentHelper, TestSetup {
         assertTrue(deploymentHistory.includes(child1), "Truth Violation: deploymentHistory.includes(child1)");
 
         // Expectation 2
-        address child2 = ICreate3Factory(address(proxy)).getAddress(wallet.addr, strippedBytecodeChildA);
+        address child2 = ICreate3Factory(address(proxy)).getAddress(wallet.addr, creationCode);
 
         // Act 2
-        deployChild(address(proxy), wallet, strippedBytecodeChildA);
+        deployChild(address(proxy), wallet, creationCode, constructorArgsCode);
         deploymentHistory = ICreate3Factory(address(proxy)).getDeploymentHistory(wallet.addr);
 
         // Assertions 2
@@ -178,20 +208,16 @@ contract Create3FactoryTest is DeploymentHelper, TestSetup {
         // Setup
         VmSafe.Wallet memory wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(pkNum)))));
 
-        // Get signature information
-        bytes32 txHash = ICreate3Factory(address(proxy)).getTransactionHash(wallet.addr, strippedBytecodeChildA);
+        (bytes memory creationCode, bytes memory constructorArgsCode) = getDeploymentBytecode();
 
-        bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", txHash));
-
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(wallet.privateKey, messageHash);
-        bytes memory signature = abi.encodePacked(r, s, v);
+        bytes memory signature = getSignature(address(proxy), wallet, creationCode);
 
         // Deploy once
-        ICreate3Factory(address(proxy)).deploy(wallet.addr, signature, strippedBytecodeChildA, abi.encode(wallet.addr));
+        ICreate3Factory(address(proxy)).deploy(wallet.addr, signature, creationCode, constructorArgsCode);
 
         // Act: attempt replay
         vm.expectRevert(Create3Factory.Unauthorized.selector);
-        ICreate3Factory(address(proxy)).deploy(wallet.addr, signature, strippedBytecodeChildA, abi.encode(wallet.addr));
+        ICreate3Factory(address(proxy)).deploy(wallet.addr, signature, creationCode, constructorArgsCode);
     }
 
     function testFuzz_CannotDeployWithoutApproval(uint256 pkNum, address invalidPrincipal) public {
@@ -201,29 +227,23 @@ contract Create3FactoryTest is DeploymentHelper, TestSetup {
         // Failing condition: principal is not the signer
         vm.assume(invalidPrincipal != wallet.addr);
 
-        // Get signature information
-        bytes32 txHash = ICreate3Factory(address(proxy)).getTransactionHash(wallet.addr, strippedBytecodeChildA);
+        (bytes memory creationCode, bytes memory constructorArgsCode) = getDeploymentBytecode();
 
-        bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", txHash));
-
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(wallet.privateKey, messageHash);
-        bytes memory signature = abi.encodePacked(r, s, v);
+        bytes memory signature = getSignature(address(proxy), wallet, creationCode);
 
         // Act: attempt with invalid principal
         vm.expectRevert(Create3Factory.Unauthorized.selector);
-        ICreate3Factory(address(proxy)).deploy(
-            invalidPrincipal, signature, strippedBytecodeChildA, abi.encode(wallet.addr)
-        );
+        ICreate3Factory(address(proxy)).deploy(invalidPrincipal, signature, creationCode, constructorArgsCode);
     }
 
-    function testFuzz_GetBytecodeHash(bytes memory _childStrippedBytecode) public {
-        vm.assume(_childStrippedBytecode.length > 0 && _childStrippedBytecode.length <= 24576); // max contract size
+    function testFuzz_GetBytecodeHash(bytes memory _childCreationCode) public {
+        vm.assume(_childCreationCode.length > 0 && _childCreationCode.length <= 24576); // max contract size
 
         // Act
-        bytes32 actualHash = ICreate3Factory(address(proxy)).getBytecodeHash(_childStrippedBytecode);
+        bytes32 actualHash = ICreate3Factory(address(proxy)).getBytecodeHash(_childCreationCode);
 
         // Expected
-        bytes32 expectedHash = keccak256(_childStrippedBytecode);
+        bytes32 expectedHash = keccak256(_childCreationCode);
 
         // Assertions
         assertEq(actualHash, expectedHash, "Equivalence Violation: actualHash != expectedHash");
