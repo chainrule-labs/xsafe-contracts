@@ -1,37 +1,57 @@
-# XSafe Contracts
+# xSafe Contracts
 
-Deterministic Multi-Chain Deployment
+## Deterministic Multi-Chain Deployment
 
-Contracts:
+Introducing xSafe, the new gold standard for intent-based CREATE3 contract deployments. Deploy your contracts to the same address on many chains–no nonces, no salts.
 
-We only accept signatures relevant to our specific contract functionality
+## The Multi-Chain Deployment Trilemma
 
--   No actions can take place that were not directly authorized
--   Stolen signatures, for other means, do not prompt deployments on our factory contract
+![Multi-chain Deployment Trilemma](assets/trilemma.png)
 
-We mandate that only signer and xsafe can submit signatures for deployment
+### The Problem with EOA Deployments
 
--   The power to execute a depoyment is limited to salt private key holder and xsafe
+Traditionally, achieving the same address on many chains requires careful (manual) EOA nonce management. Mess up the nonce once, start all over.
 
-Deployment requires signature, not address directly
+### The Problem with CREATE2
 
--   Salt is a function of address - anyone can submit an address. Only private keyholder can submit signature
--   With signature method, the only way to obtain a salt, tied to an address, is to own that address' private key
--   Only rightful owners can deploy their contracts at their deterministic addresses
+The `CREATE2` opcode can generate identical addresses, but when constructor arguments vary across chains, differing contract bytecode results in distinct addresses. An intent-based solution, [like this](src/create2/Create2Factory.sol), obviates salt storage, but addresses still depend on contract bytecode.
 
-User nonce is dependent on the bytecode of the function
+### The Problem with CREATE3
 
--   Rationale: user does not need to track the order in which they deploy contracts a, b, c... On chain 1 | b, a, c... On chain 2
--   In an effort to keep the signable transaction hash unique for each transaction, bytecode is included in the has
--   We chose not to include bytecode in the salt because create2 is a hash of the bytecode and the salt.
-    -   Even if the salt is the same for contract a and b, they will have different bytecodes and thus different addresses.
+A `CREATE3` approach offers an elegant solution, irrespective of contract bytecode, but still requires users to memorize salts.
 
-Create3 constructor arg independent deployer notes
+## The Solution
 
--   Child address is order-independent so long as the stripped bytecode differs on same chain and different chains
-    -   Example: deploy a, b, c in any order you want on different chains and still guarantee correct addresses on each chain
--   Child address is order-dependent multiple contracts share the same stripped bytecode and differing constructor args
-    -   Example: on chain 1, deploy person contract with constructor arg, bob; deploy person contract with constructor arg, alice.
-        If, on Chain 2, alice contract was deployed before bob contract, the chain 2 alice contract would take the chain 1 bob contract's address.
--   If user messes up constructor args on a single chain, all chain deployments must be redone if address uniformity is required.
-    This is true for all multi-chain contract deployments (manual, create2, and create3).
+[xSafe](src/create3/Create3Factory.sol) achieves same-address deployment with no bytecode dependence, no nonce tracking, and no salt storage. Under the hood, salts are derived from principals' signatures, thereby allowing agents to deploy contracts on behalf of signers.
+
+## Testing
+
+### 1. Environment Variables
+
+Create a `.env` file in the project root directory and add your RPC URL.
+
+```dotenv
+RPC_URL="your_rpc_url_here"
+```
+
+### 2. Install Dependencies
+
+Install npm dependencies:
+
+```bash
+npm install
+```
+
+Install Foundry dependencies:
+
+```bash
+forge install
+```
+
+### 3. Run Tests
+
+Execute the tests using Foundry:
+
+```bash
+forge test
+```
