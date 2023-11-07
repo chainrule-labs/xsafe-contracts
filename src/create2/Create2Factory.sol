@@ -10,7 +10,7 @@ import { IERC20 } from "../dependencies/token/interfaces/IERC20.sol";
 
 contract Create2Factory is Initializable, UUPSUpgradeable, Ownable {
     // Private Constants: no SLOAD to save users gas
-    address private constant CONTRACT_DEPLOYER = 0x3790e085cD4FC7a12270DaEedc5c208aFc35bB0F; // TODO: Update
+    address private constant CONTRACT_DEPLOYER = 0x0a5B347509621337cDDf44CBCf6B6E7C9C908CD2;
 
     // EIP-712 Storage
     bytes32 internal domainSeparator;
