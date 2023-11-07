@@ -9,6 +9,9 @@ import { UUPSUpgradeable } from "../dependencies/proxy/utils/UUPSUpgradeable.sol
 import { Ownable } from "../dependencies/access/Ownable.sol";
 import { IERC20 } from "../dependencies/token/interfaces/IERC20.sol";
 
+/// @title Intent-based CREATE3 factory: no nonce tracking, no salt storage.
+/// @author chainrule.eth
+/// @notice Salts are signature-derived and child address is constructor argument independent.
 contract Create3Factory is Initializable, UUPSUpgradeable, Ownable {
     // Private Constants: no SLOAD to save users gas
     address private constant CONTRACT_DEPLOYER = 0x3790e085cD4FC7a12270DaEedc5c208aFc35bB0F; // TODO: Update
@@ -57,24 +60,24 @@ contract Create3Factory is Initializable, UUPSUpgradeable, Ownable {
     /**
      * @dev Computes the expected message hash.
      * @param _principal The address of the account for whom this factory contract will deploy a child contract.
-     * @param _strippedBytecode The bytecode of the contract to be deployed without the constructor arguments.
+     * @param _creationCode The bytecode of the contract to be deployed without the constructor arguments.
      * @return messageHash The expected signed message hash.
      */
-    function _computeMessageHash(address _principal, bytes memory _strippedBytecode) internal view returns (bytes32) {
-        bytes32 txHash = getTransactionHash(_principal, _strippedBytecode);
+    function _computeMessageHash(address _principal, bytes memory _creationCode) internal view returns (bytes32) {
+        bytes32 txHash = getTransactionHash(_principal, _creationCode);
         return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", txHash));
     }
 
     /**
      * @dev Returns the unique deployment transaction hash to be signed.
      * @param _principal The address of the account for whom this factory contract will deploy a child contract.
-     * @param _strippedBytecode The bytecode of the contract to be deployed without the constructor arguments.
+     * @param _creationCode The bytecode of the contract to be deployed without the constructor arguments.
      * @return txHash The unique deployment transaction hash to be signed.
      */
-    function getTransactionHash(address _principal, bytes memory _strippedBytecode) public view returns (bytes32) {
+    function getTransactionHash(address _principal, bytes memory _creationCode) public view returns (bytes32) {
         return keccak256(
             abi.encodePacked(
-                domainSeparator, _principal, _strippedBytecode, userNonces[_principal][keccak256(_strippedBytecode)]
+                domainSeparator, _principal, _creationCode, userNonces[_principal][keccak256(_creationCode)]
             )
         );
     }
@@ -82,23 +85,22 @@ contract Create3Factory is Initializable, UUPSUpgradeable, Ownable {
     /**
      * @dev Returns the predicted address of a contract to be deployed before it's deployed.
      * @param _principal The address of the account that signed the message hash.
-     * @param _strippedBytecode The bytecode of the contract to be deployed without the constructor arguments.
+     * @param _creationCode The bytecode of the contract to be deployed without the constructor arguments.
      * @return child The predicted address of the contract to be deployed.
      */
-    function getAddress(address _principal, bytes memory _strippedBytecode) public view returns (address) {
-        bytes32 salt = keccak256(
-            abi.encodePacked(_principal, _strippedBytecode, userNonces[_principal][keccak256(_strippedBytecode)])
-        );
+    function getAddress(address _principal, bytes memory _creationCode) public view returns (address) {
+        bytes32 salt =
+            keccak256(abi.encodePacked(_principal, _creationCode, userNonces[_principal][keccak256(_creationCode)]));
         return CREATE3.getDeployed(salt);
     }
 
     /**
      * @dev Returns the keccak256 hash of the provided stripped bytecode.
-     * @param _strippedBytecode The bytecode of the contract to be deployed without the constructor arguments.
+     * @param _creationCode The bytecode of the contract to be deployed without the constructor arguments.
      * @return hash The keccak256 hash of the provided stripped bytecode.
      */
-    function getBytecodeHash(bytes memory _strippedBytecode) public pure returns (bytes32) {
-        return keccak256(_strippedBytecode);
+    function getBytecodeHash(bytes memory _creationCode) public pure returns (bytes32) {
+        return keccak256(_creationCode);
     }
 
     /**
@@ -114,18 +116,18 @@ contract Create3Factory is Initializable, UUPSUpgradeable, Ownable {
      * @dev Deploys arbitrary child contracts at predictable addresses, derived from account signatures.
      * @param _principal The address of the account that signed the message hash.
      * @param _signature The resulting signature from the principal account signing the messahge hash.
-     * @param _strippedBytecode The bytecode of the contract to be deployed without the constructor arguments.
+     * @param _creationCode The bytecode of the contract to be deployed without the constructor arguments.
      * @param _constructorArgsBytecode The encoded constructor arguments of the contract to be deployed.
      */
     function deploy(
         address _principal,
         bytes memory _signature,
-        bytes memory _strippedBytecode,
+        bytes memory _creationCode,
         bytes memory _constructorArgsBytecode
     ) public payable {
-        bytes32 hashedStrippedBytecode = keccak256(_strippedBytecode);
+        bytes32 hashedStrippedBytecode = keccak256(_creationCode);
         uint256 currentNonce = userNonces[_principal][hashedStrippedBytecode];
-        bytes32 expectedMessageHash = _computeMessageHash(_principal, _strippedBytecode);
+        bytes32 expectedMessageHash = _computeMessageHash(_principal, _creationCode);
 
         // Ensure the provided principal signed the expected message hash
         if (ECDSA.recover(expectedMessageHash, _signature) != _principal) revert Unauthorized();
@@ -134,10 +136,10 @@ contract Create3Factory is Initializable, UUPSUpgradeable, Ownable {
         userNonces[_principal][hashedStrippedBytecode]++;
 
         // Calculate salt
-        bytes32 salt = keccak256(abi.encodePacked(_principal, _strippedBytecode, currentNonce));
+        bytes32 salt = keccak256(abi.encodePacked(_principal, _creationCode, currentNonce));
 
         // Deploy
-        address child = CREATE3.deploy(salt, abi.encodePacked(_strippedBytecode, _constructorArgsBytecode), msg.value);
+        address child = CREATE3.deploy(salt, abi.encodePacked(_creationCode, _constructorArgsBytecode), msg.value);
 
         // Update deployment history
         _deploymentHistory[_principal].push(child);

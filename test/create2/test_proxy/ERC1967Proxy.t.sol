@@ -4,8 +4,8 @@ pragma solidity ^0.8.21;
 import { Create2Factory } from "../../../src/create2/Create2Factory.sol";
 import { ERC1967Proxy } from "../../../src/dependencies/proxy/ERC1967Proxy.sol";
 import { ICreate2FactoryAdmin } from "../../../src/create2/interfaces/ICreate2FactoryAdmin.sol";
-import { TestSetup } from "../common/TestSetup.t.sol";
-import { CONTRACT_DEPLOYER } from "../../common/Constants.t.sol";
+import { TestSetup } from "../common/contracts/TestSetup.t.sol";
+import { CONTRACT_DEPLOYER } from "../common/Constants.t.sol";
 
 contract ERC1967ProxyTest is TestSetup {
     /* solhint-disable func-name-mixedcase */
