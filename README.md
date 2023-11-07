@@ -2,7 +2,7 @@
 
 ## Deterministic Multi-Chain Deployment
 
-Introducing xSafe, the new gold standard for intent-based CREATE3 contract deployments. Deploy your contracts to the same address on many chains–no nonces, no salts.
+🏆Introducing xSafe, the new gold standard for intent-based CREATE3 contract deployments. Deploy your contracts to the same address on many chains–no nonces, no salts.
 
 ## The Multi-Chain Deployment Trilemma
 
