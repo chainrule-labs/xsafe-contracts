@@ -27,8 +27,8 @@ contract Create3Factory is Initializable, UUPSUpgradeable, Ownable {
     event Deploy(
         address indexed principal,
         address indexed child,
-        bytes32 indexed hashedStrippedBytecode,
-        bytes constructorArgsBytecode,
+        bytes32 indexed hashedCreationCode,
+        bytes constructorArgsCode,
         uint256 nonce
     );
 
@@ -117,34 +117,34 @@ contract Create3Factory is Initializable, UUPSUpgradeable, Ownable {
      * @param _principal The address of the account that signed the message hash.
      * @param _signature The resulting signature from the principal account signing the messahge hash.
      * @param _creationCode The bytecode of the contract to be deployed without the constructor arguments.
-     * @param _constructorArgsBytecode The encoded constructor arguments of the contract to be deployed.
+     * @param _constructorArgsCode The encoded constructor arguments of the contract to be deployed.
      */
     function deploy(
         address _principal,
         bytes memory _signature,
         bytes memory _creationCode,
-        bytes memory _constructorArgsBytecode
+        bytes memory _constructorArgsCode
     ) public payable {
-        bytes32 hashedStrippedBytecode = keccak256(_creationCode);
-        uint256 currentNonce = userNonces[_principal][hashedStrippedBytecode];
+        bytes32 hashedCreationCode = keccak256(_creationCode);
+        uint256 currentNonce = userNonces[_principal][hashedCreationCode];
         bytes32 expectedMessageHash = _computeMessageHash(_principal, _creationCode);
 
         // Ensure the provided principal signed the expected message hash
         if (ECDSA.recover(expectedMessageHash, _signature) != _principal) revert Unauthorized();
 
         // Update nonce state
-        userNonces[_principal][hashedStrippedBytecode]++;
+        userNonces[_principal][hashedCreationCode]++;
 
         // Calculate salt
         bytes32 salt = keccak256(abi.encodePacked(_principal, _creationCode, currentNonce));
 
         // Deploy
-        address child = CREATE3.deploy(salt, abi.encodePacked(_creationCode, _constructorArgsBytecode), msg.value);
+        address child = CREATE3.deploy(salt, abi.encodePacked(_creationCode, _constructorArgsCode), msg.value);
 
         // Update deployment history
         _deploymentHistory[_principal].push(child);
 
-        emit Deploy(_principal, child, hashedStrippedBytecode, _constructorArgsBytecode, currentNonce);
+        emit Deploy(_principal, child, hashedCreationCode, _constructorArgsCode, currentNonce);
     }
 
     receive() external payable { } // solhint-disable-line no-empty-blocks

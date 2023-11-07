@@ -18,10 +18,10 @@ abstract contract DeploymentHelper is Test, TestSetup {
         address _contract,
         VmSafe.Wallet memory _wallet,
         bytes memory _creationCode,
-        bytes memory _constructorArgsBytecode
+        bytes memory _constructorArgsCode
     ) internal {
         bytes memory signature = getSignature(_contract, _wallet, _creationCode);
-        ICreate3Factory(_contract).deploy(_wallet.addr, signature, _creationCode, _constructorArgsBytecode);
+        ICreate3Factory(_contract).deploy(_wallet.addr, signature, _creationCode, _constructorArgsCode);
     }
 
     /**

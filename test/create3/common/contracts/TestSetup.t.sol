@@ -21,8 +21,8 @@ abstract contract TestSetup is Test {
     event Deploy(
         address indexed principal,
         address indexed child,
-        bytes32 indexed hashedStrippedBytecode,
-        bytes constructorArgsBytecode,
+        bytes32 indexed hashedCreationCode,
+        bytes constructorArgsCode,
         uint256 nonce
     );
 
